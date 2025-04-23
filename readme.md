@@ -2,6 +2,11 @@
 
 Editor written in C using opengl and freetype that runs out of the box.
 
+## Table of Contents
+
+- [Linux](#linux)
+- [Build Instructions](#compilation)
+
 > [!NOTE]
 > I will document the source code as well as the functionalities once I complete the short term todo list
 
@@ -9,7 +14,7 @@ Editor written in C using opengl and freetype that runs out of the box.
 
 ### Linux
 
-I intend wayland support once the app is feature complete and restructured.
+As of current, linux is not supported. I intend wayland support once the app is feature complete and restructured.
 
 ### compilation
 
