@@ -7,8 +7,8 @@ typedef struct {
 } Size;
 
 typedef struct {
-    uint32_t x;
-    uint32_t y;
+    int32_t x;
+    int32_t y;
 } Bearing;
 
 typedef struct {

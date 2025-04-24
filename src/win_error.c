@@ -1,33 +1,39 @@
 #include "includes.h"
+#ifdef demiwindows
 
-void win32_err(enum err_type err) {
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+
+void error(enum err_type err) {
     char* error;
     switch (err) {
         case err_glew_initialization:
             error = "could not initialize glew";
-            break;
+        break;
         case err_freetype_initialization:
             error = "could not initialize freetype2";
-            break;
+        break;
         case err_shader_compilation:
             error = "shader compilation failed";
-            break;
+        break;
         case err_memory_allocation:
             error = "memory allocation failed";
-            break;
+        break;
         case err_opengl_context:
             error = "could not create opengl context";
-            break;
+        break;
         case err_file:
             error = "missing files in resources";
-            break;
+        break;
         case err_icon:
             error = "missing icon in resources";
-            break;
+        break;
         case err_font:
             error = "missing font in resources";
-            break;
-
+        break;
+        default:
+            error = "invalid error message";
+        break;
     }
     MessageBox(NULL, error, "Error", MB_ICONERROR | MB_OK);
     PostQuitMessage(-1);
@@ -99,5 +105,7 @@ void check_gl_errors() {
         printf("%s%d%s\n", " (", error, ")");
     }
 }
+
+#endif
 
 #endif

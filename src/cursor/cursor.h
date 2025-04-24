@@ -20,4 +20,3 @@ Cursor cursor_create();
 void cursor_update_position(Cursor* cursor, Buffer* buffer, CharacterMap* char_map, float start_x, float start_y);
 void cursor_update_blink(Cursor* cursor);
 void cursor_render(Cursor* cursor, Shader* shader);
-void cursor_to_nl(Cursor* cursor, Buffer* buffer);

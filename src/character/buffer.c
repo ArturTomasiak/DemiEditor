@@ -6,7 +6,7 @@ Buffer buffer_create() {
     buffer.allocated_memory = 250;
     buffer.content = malloc(buffer.allocated_memory);
     if (!buffer.content)
-        win32_err(err_memory_allocation);
+        error(err_memory_allocation);
     return buffer;
 }
 
@@ -23,15 +23,13 @@ void buffer_insert_char(Buffer* buffer, char val, uint64_t pos) {
         buffer->allocated_memory += 500;
         buffer->content = realloc(buffer->content, buffer->allocated_memory);
         if (!buffer->content)
-            win32_err(err_memory_allocation);
+            error(err_memory_allocation);
     }
     memmove(buffer->content + pos + 1, buffer->content + pos, buffer->length - pos);
     buffer->content[pos] = val;
 }
 
 void buffer_delete_char(Buffer* buffer, uint64_t pos) {
-    if (buffer->length == 0)
-        return;
     memmove(buffer->content + pos - 1, buffer->content + pos, buffer->length - pos);
     buffer->length--;
 }
@@ -48,7 +46,7 @@ void buffer_insert_string(Buffer* buffer, const char* str, uint64_t pos) {
             buffer->allocated_memory += len;
         buffer->content = realloc(buffer->content, buffer->allocated_memory);
         if (!buffer->content)
-            win32_err(err_memory_allocation);
+            error(err_memory_allocation);
     }
     memmove(buffer->content + pos + len, buffer-> content + pos, buffer->length - pos + 1 - len);
     memcpy(buffer->content + pos, str, len);

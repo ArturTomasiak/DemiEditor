@@ -49,16 +49,3 @@ void cursor_render(Cursor* cursor, Shader* shader) {
     shader_set_uniform1i(shader, "letter_map", cursor->character.ch);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
-
-void cursor_to_nl(Cursor* cursor, Buffer* buffer) {
-    if (cursor->position > 0) {
-        if (buffer->content[cursor->position - 1] == '\n' && buffer->content[cursor->position + 1] == '\n') {
-            cursor->position++;
-            return;
-        }
-        else if (buffer->content[cursor->position - 1] == '\n')
-            cursor->position++;
-    }
-    while (cursor->position < buffer->length && buffer->content[cursor->position - 1] != '\n')
-        cursor->position++;
-}

@@ -1,20 +1,19 @@
 #pragma once
 
+#define _CRT_SECURE_NO_WARNINGS
+
+#define demidebug // comment out for release
+
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__)
+#define demiwindows
+#endif
+
 #include <GL/glew.h>
 #include <GL/wglew.h>
 #include <GL/gl.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include FT_LCD_FILTER_H
-
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#if defined(min)
-#undef min
-#endif
-#if defined(max)
-#undef max
-#endif
 
 #include <stdint.h>
 
@@ -28,9 +27,9 @@ enum err_type {
     err_icon,
     err_font
 };
-void win32_err(enum err_type err);
 
-#define demidebug
+// implemented in error
+void error(enum err_type err);
 
 #ifdef demidebug
 void fatal(uint32_t line, char* file, char* message);

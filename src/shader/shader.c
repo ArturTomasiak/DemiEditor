@@ -79,7 +79,7 @@ static uint32_t shader_compile(uint32_t type, const char* source) {
         glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
         char* message = malloc(length * sizeof(char));
         if (!message){
-            win32_err(err_memory_allocation);
+            error(err_memory_allocation);
             return 0;
         }
         glGetShaderInfoLog(id, length, &length, message);
@@ -90,7 +90,7 @@ static uint32_t shader_compile(uint32_t type, const char* source) {
         #else
         glDeleteShader(id);
         #endif
-        win32_err(err_shader_compilation);
+        error(err_shader_compilation);
     }
     return id;
 }
@@ -105,7 +105,7 @@ static char* shader_content(const char* location, int32_t arr_limit) {
         char* err = "failed to open file at: ";
         char* full_err = malloc(strlen(err) + strlen(location) + 1);
         if (!full_err){
-            win32_err(err_memory_allocation);
+            error(err_memory_allocation);
             return "\0";
         }
         strcpy(full_err, err);
@@ -113,7 +113,7 @@ static char* shader_content(const char* location, int32_t arr_limit) {
         fatal(__LINE__, __FILE__, full_err);
         free(full_err);
         #endif
-        win32_err(err_file);
+        error(err_file);
         return "\0";
     }
     fseek(file_pointer, 0, SEEK_END);
@@ -122,7 +122,7 @@ static char* shader_content(const char* location, int32_t arr_limit) {
     char *buffer = malloc(file_size + define_size + 1);
     if (!buffer) {
         fclose(file_pointer);
-        win32_err(err_memory_allocation);
+        error(err_memory_allocation);
         return "\0";
     }
     strcpy(buffer, define_str);
