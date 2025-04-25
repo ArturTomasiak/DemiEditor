@@ -2,7 +2,7 @@
 #ifdef demiwindows
 
 #define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
+#include <windows.h>
 
 void error(enum err_type err) {
     char* error;
@@ -21,6 +21,9 @@ void error(enum err_type err) {
         break;
         case err_opengl_context:
             error = "could not create opengl context";
+        break;
+        case err_create_window:
+            error = "could not create window";
         break;
         case err_file:
             error = "missing files in resources";

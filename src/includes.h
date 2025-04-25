@@ -1,9 +1,5 @@
 #pragma once
 
-#define _CRT_SECURE_NO_WARNINGS
-
-#define demidebug // comment out for release
-
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__)
 #define demiwindows
 #endif
@@ -23,6 +19,7 @@ enum err_type {
     err_shader_compilation,
     err_memory_allocation,
     err_opengl_context,
+    err_create_window,
     err_file,
     err_icon,
     err_font

@@ -1,27 +1,69 @@
 #include "includes.h"
 
-// static void render_text_call(uint32_t length);
-// static void render_text();
+#include "character/character.h"
+#include "character/buffer.h"
+#include "shader/shader.h"
+#include "cursor/cursor.h"
+#include "objects/vao.h"
+#include "objects/vbo.h"
+#include "math/math.h"
 
-void editor_loop();
-void editor_window_size(int32_t width, int32_t height);
-_Bool editor_init(int32_t width, int32_t height);
-void editor_end_gracefully();
-void editor_dpi(int32_t dpi);
-_Bool alloc_variables();
+typedef struct {
+    uint16_t font_pixels_setting;
+    float line_spacing_setting;
+    uint16_t font_pixels; 
+    float line_spacing;
+    float dpi_scale;
+    
+    uint8_t processed_chars;
+    int32_t arr_limit;
+    
+    int32_t* letter_map; 
+    float* transforms;
+    float* projection;
+    float width;
+    float height;
+    float text_x;
+    float text_y;
+    
+    Buffer buffer;
+    Cursor cursor;
+    
+    CharacterMap character_map;
+    Shader shader;
+    
+    uint32_t texture_array;
+    vertex_array_object vao;
+    vertex_buffer_object vbo;
+    
+    FT_Library ft_lib;
+    FT_Face ft_face;
+    } Editor;
+
+// void render_text_call(uint32_t length);
+// void render_text();
+
+void editor_loop(Editor* editor);
+void editor_window_size(Editor* editor, float width, float height);
+Editor editor_create(float width, float height, int32_t dpi);
+void editor_delete(Editor* editor);
+void editor_dpi(Editor* editor, int32_t dpi);
+_Bool alloc_variables(Editor* editor);
 
 // static void build_font();
 // static void build_cursor();
 // static void create_objects();
 
-void editor_backspace();
-void editor_tab();
-void editor_enter();
-void editor_input(char ch);
+void editor_backspace(Editor* editor);
+void editor_tab(Editor* editor);
+void editor_enter(Editor* editor);
+void editor_input(Editor* editor, char ch);
 
-void editor_key_left();
-void editor_key_right();
-void editor_key_up();
-void editor_key_down();
-void editor_key_home();
-void editor_key_end();
+void editor_key_left(Editor* editor);
+void editor_key_right(Editor* editor);
+void editor_key_up(Editor* editor);
+void editor_key_down(Editor* editor);
+void editor_key_home(Editor* editor);
+void editor_key_end(Editor* editor);
+
+void editor_left_click(Editor* editor, float mouse_x, float mouse_y);

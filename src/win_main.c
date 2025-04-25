@@ -2,30 +2,31 @@
 #ifdef demiwindows
 
 #define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
+#include <windows.h>
 
 #include "editor.h"
 
-static void end_gracefully();
+static void end_gracefully(Editor* editor, HGLRC hglrc, HWND hwnd, HDC hdc);
 static void enable_vsync();
-static _Bool create_window();
-static HGLRC create_temp_context();
-static HGLRC create_context();
+static _Bool create_window(WNDCLASSEX *wc, HINSTANCE hinstance, HWND *hwnd);
+static HGLRC create_temp_context(HDC hdc, HWND hwnd);
+static HGLRC create_context(HDC hdc, HWND hwnd);
 
-static HINSTANCE hinstance;
-static WNDCLASSEX wc = {0};
-static HGLRC hglrc;
-static HWND hwnd;
-static HDC hdc;
 static const char* application_name = "DemiEditor";
-static const char* wc_class_name = "DemiEditor";
-static float width = 960.0f;
-static float height = 540.0f;
-static _Bool resized = 0;
+static _Bool resized  = 0;
+// because WndProc can't directly recieve arguments
+static Editor* get_editor(Editor* editor) {
+    static Editor* func_editor;
+    if (editor) {
+        func_editor = editor;
+        return func_editor;
+    }
+    return func_editor;   
+}
 
 #ifdef demidebug
 int32_t main() {
-    hinstance = GetModuleHandle(NULL);
+    HINSTANCE hinstance = GetModuleHandle(NULL);
 #else
 int32_t CALLBACK WinMain(
     HINSTANCE hInstance,
@@ -34,13 +35,17 @@ int32_t CALLBACK WinMain(
     int32_t nCmdShow 
 ) {
 
-    hinstance = hInstance;
+    HINSTANCE hinstance = hInstance;
 #endif    
+    WNDCLASSEX wc = {0};
+    HGLRC hglrc;
+    HWND hwnd;
+    HDC hdc;
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-    if (!create_window())
+    if (!create_window(&wc, hinstance, &hwnd))
         return -1;
     hdc = GetDC(hwnd);
-    HGLRC temp_context = create_temp_context();
+    HGLRC temp_context = create_temp_context(hdc, hwnd);
 
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) {
@@ -51,25 +56,17 @@ int32_t CALLBACK WinMain(
         return -1;
     }
 
-    hglrc = create_context();
+    hglrc = create_context(hdc, hwnd);
     wglDeleteContext(temp_context);
 
     enable_vsync();
     
-    if (!alloc_variables()) {
-        wglDeleteContext(hglrc);
-        ReleaseDC(hwnd, hdc);
-        DestroyWindow(hwnd);
-        return -1;
-    }
-    editor_dpi(GetDpiForWindow(hwnd));
     RECT clientRect;
     GetClientRect(hwnd, &clientRect);
-    uint32_t width = clientRect.right - clientRect.left;
-    uint32_t height = clientRect.bottom - clientRect.top;
-    if (!editor_init(width, height)) {
-        end_gracefully();
-    }
+    int32_t width = clientRect.right - clientRect.left;
+    int32_t height = clientRect.bottom - clientRect.top;
+    Editor editor = editor_create((float)width, (float)height, GetDpiForWindow(hwnd));
+    get_editor(&editor);
 
     MSG msg;
     _Bool running = 1;
@@ -86,14 +83,14 @@ int32_t CALLBACK WinMain(
             GetClientRect(hwnd, &clientRect);
             width = clientRect.right - clientRect.left;
             height = clientRect.bottom - clientRect.top;
-            editor_window_size(width, height);
+            editor_window_size(&editor, (float)width, (float)height);
             resized = 0;
         }
 
         glClearColor(0.12156862745f, 0.12156862745f, 0.11372549019f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        editor_loop();
+        editor_loop(&editor);
 
         SwapBuffers(hdc);
 
@@ -109,11 +106,12 @@ int32_t CALLBACK WinMain(
         }
     }
     
-    end_gracefully();
+    end_gracefully(&editor, hglrc, hwnd, hdc);
     return msg.wParam;
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param) {
+    Editor* editor = get_editor(NULL);
     switch(msg) {
         case WM_CLOSE: 
             PostQuitMessage(0);
@@ -122,43 +120,46 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param) {
             resized = 1;
         break;
         case WM_DPICHANGED:
-            editor_dpi(LOWORD(w_param));
+            editor_dpi(editor, LOWORD(w_param));
+        break;
+        case WM_LBUTTONUP:
+            editor_left_click(editor, (float)(short)LOWORD(l_param), (float)(short)HIWORD(l_param)); 
         break;
         case WM_CHAR:
             switch(w_param) {
                 case 8:
-                    editor_backspace();
+                    editor_backspace(editor);
                 break;
                 case 9:
-                    editor_tab();
+                    editor_tab(editor);
                 break;
                 case 13:
-                    editor_enter();
+                    editor_enter(editor);
                 break;
                 default:
-                    editor_input(w_param);
+                    editor_input(editor, w_param);
                 break;
             }
         break;
         case WM_KEYDOWN:
             switch(w_param) {
                 case VK_LEFT:
-                    editor_key_left();
+                    editor_key_left(editor);
                 break;
                 case VK_RIGHT:
-                    editor_key_right();
+                    editor_key_right(editor);
                 break;
                 case VK_UP:
-                    editor_key_up();
+                    editor_key_up(editor);
                 break;
                 case VK_DOWN:
-                    editor_key_down();
+                    editor_key_down(editor);
                 break;
                 case VK_HOME:
-                    editor_key_home();
+                    editor_key_home(editor);
                 break;
                 case VK_END:
-                    editor_key_end();
+                    editor_key_end(editor);
                 break;
             }
         break;
@@ -166,8 +167,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param) {
     return DefWindowProc(hwnd, msg, w_param, l_param);
 }
 
-static void end_gracefully() {
-    editor_end_gracefully();
+static void end_gracefully(Editor* editor, HGLRC hglrc, HWND hwnd, HDC hdc) {
+    editor_delete(editor);
     wglMakeCurrent(NULL, NULL);
     wglDeleteContext(hglrc);
     ReleaseDC(hwnd, hdc);
@@ -185,31 +186,37 @@ static void enable_vsync() {
     #endif
 }
 
-static _Bool create_window() {
+static _Bool create_window(WNDCLASSEX *wc, HINSTANCE hinstance, HWND *hwnd) {
+    int32_t width  = 960;
+    int32_t height = 540;
     const char* application_icon = "..\\resources\\icons\\placeholder.ico";
     DWORD attributes = GetFileAttributesA(application_icon);
     if (attributes == INVALID_FILE_ATTRIBUTES || attributes & FILE_ATTRIBUTE_DIRECTORY) {
         error(err_icon);
         return 0;
     }
-    wc.cbSize = sizeof(wc);
-    wc.style = CS_OWNDC;
-    wc.lpfnWndProc = WndProc;
-    wc.hInstance = hinstance;
-    wc.lpszClassName = wc_class_name;
-    wc.hIcon = (HICON)LoadImage(hinstance, application_icon, IMAGE_ICON, 32, 32, LR_LOADFROMFILE);
-    wc.hIconSm = (HICON)LoadImage(hinstance, application_icon, IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    RegisterClassEx(&wc);
-    hwnd = CreateWindowEx(
-        0, wc_class_name, application_name, 
+    wc->cbSize = sizeof(*wc);
+    wc->style = CS_OWNDC;
+    wc->lpfnWndProc = WndProc;
+    wc->hInstance = hinstance;
+    wc->lpszClassName = application_name;
+    wc->hIcon = (HICON)LoadImage(hinstance, application_icon, IMAGE_ICON, 32, 32, LR_LOADFROMFILE);
+    wc->hIconSm = (HICON)LoadImage(hinstance, application_icon, IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
+    wc->hCursor = LoadCursor(NULL, IDC_ARROW);
+    RegisterClassEx(wc);
+    *hwnd = CreateWindowEx(
+        0, application_name, application_name, 
         WS_CAPTION | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SIZEBOX | WS_SYSMENU, 
         200, 200, width, height, 0, 0, hinstance, 0 
     );
+    if (!*hwnd) {
+        error(err_create_window);
+        return 0;
+    }
     return 1;
 }
 
-static HGLRC create_temp_context() {
+static HGLRC create_temp_context(HDC hdc, HWND hwnd) {
     PIXELFORMATDESCRIPTOR pfd = {
         sizeof(PIXELFORMATDESCRIPTOR),
         1,
@@ -235,7 +242,7 @@ static HGLRC create_temp_context() {
     return temp_context;
 }
 
-static HGLRC create_context() {
+static HGLRC create_context(HDC hdc, HWND hwnd) {
     const int attribList[] =
     {
         WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,

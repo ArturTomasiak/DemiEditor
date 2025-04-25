@@ -1,6 +1,8 @@
 ## DemiEditor
 
-A lightweight text editor written in C using opengl and freetype that runs out of the box.
+A work in progress lightweight text editor written in C using opengl and freetype that runs out of the box.
+
+![demi screenshot](screenshot.png)
 
 ### Table of Contents
 
@@ -10,12 +12,9 @@ A lightweight text editor written in C using opengl and freetype that runs out o
 - [Build Instructions](#compilation)
 - [Version History](#version-history)
 
-> [!NOTE]
-> Demi editor is work in progress and as of current is unstable for reasons beyond my comprehension
-
 ### Project Structure
 
-The overall idea is that the entry point (win_main.c for windows) is limited to doing window handling and operating system specific setup, refering to editor.c for the editor's logic and rendering, out of which editor.c has parts of it abstracted away in the subfolders of src
+The overall idea is that the entry point (win_main.c for windows) is limited to doing window handling and operating system specific setup, refering to editor.c for the editor's logic and rendering, out of which editor.c has parts of it abstracted away in subfolders of src
 
 ```bash
 src/
@@ -44,7 +43,7 @@ As of current, linux is not supported. I intend wayland support once the app is 
 
 ### compilation
 
-build.bat compiles the project; Modify the COMPILER, INCLUDES, LIBRARIES and FLAGS variables to be true for your setup, then launch build.bat.
+Ensure that the variables within .bat files are correct for your setup, then launch debug.bat or release.bat depending on whether you want to compile a debug or release version.
 
 requirements:
 
@@ -63,7 +62,7 @@ I use [LLVM clang](https://clang.llvm.org/), which requires visual studio or it'
 
 #### glew
 
-I statically linked [glew](https://github.com/nigels-com/glew/releases/tag/glew-2.2.0)
+I statically link [glew](https://github.com/nigels-com/glew/releases/tag/glew-2.2.0)
 
 #### freetype2
 
@@ -82,3 +81,7 @@ cmake C:\Users\frogger\Downloads\freetype-master -G "Visual Studio 17 2022" -T C
 cmake --build . --config Release
 cmake --install . --config Release
 ```
+
+### Version History
+
+`0.3` -> First working demo. Obscure in features, doesn't actually edit files and limited to keyboard movement.
