@@ -4,9 +4,9 @@
 
 typedef struct {
     uint32_t renderer_id;
-} vertex_buffer_object;
+} VertexBufferObject;
 
-vertex_buffer_object vbo_create(const void* data, uint32_t size);
-void vbo_delete(vertex_buffer_object* vbo);
-void vbo_bind(const vertex_buffer_object* vbo);
+VertexBufferObject vbo_create(const void* data, uint32_t size);
+void vbo_delete(VertexBufferObject* vbo);
+void vbo_bind(const VertexBufferObject* vbo);
 void vbo_unbind();

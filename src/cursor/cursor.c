@@ -7,12 +7,12 @@ Cursor cursor_create() {
     return cursor;
 }
 
-void cursor_update_position(Cursor* cursor, Buffer* buffer, CharacterMap* character_map, float start_x, float start_y) {
-    float x = start_x, y = start_y;
+void cursor_update_position(Cursor* restrict cursor, Buffer* restrict buffer, CharacterMap* restrict character_map, float x, float y, float nl_height) {
+    float start_x = x;
     for (uint64_t i = 0; i < cursor->position && i < buffer->length; i++) {
         Character character = character_map->character[(uint8_t)buffer->content[i]];
         if (buffer->content[i] == '\n') {
-            y -= character.size.y * cursor->line_spacing;
+            y -= nl_height;
             x = start_x;
         }
         else
@@ -22,7 +22,7 @@ void cursor_update_position(Cursor* cursor, Buffer* buffer, CharacterMap* charac
     cursor->y = y;
 }
 
-void cursor_update_blink(Cursor* cursor) {
+void cursor_update_blink(Cursor* restrict cursor) {
     uint64_t current_time = GetTickCount64();
     if (current_time - cursor->last_blink >= cursor->blink_rate) {
         cursor->visible = !cursor->visible;
@@ -30,7 +30,7 @@ void cursor_update_blink(Cursor* cursor) {
     }
 }
 
-void cursor_render(Cursor* cursor, Shader* shader) { 
+void cursor_render(Cursor* restrict cursor, Shader* restrict shader) { 
     if (!cursor->visible) return;
 
     float translate[16] = {0};

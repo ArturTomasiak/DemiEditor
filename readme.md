@@ -2,6 +2,8 @@
 
 A work in progress lightweight text editor written in C using opengl and freetype that runs out of the box.
 
+As of current, it only supports windows 10+ and hardware compatible with opengl 4.6
+
 ![demi screenshot](screenshot.png)
 
 ### Table of Contents
@@ -39,7 +41,7 @@ Project's current icon is magic_hat by [mingcute](https://www.mingcute.com/)
 
 ### Linux
 
-As of current, linux is not supported. I intend wayland support once the app is feature complete and restructured.
+As of current, linux is not supported. I intend wayland support once the app is feature complete.
 
 ### compilation
 
@@ -83,5 +85,15 @@ cmake --install . --config Release
 ```
 
 ### Version History
+
+`0.4` -> changelog:
+- ctrl+v
+- scrolling text
+- moving via mouse
+- improved key up/down
+- safety checks in to delete char, WM_CHAR default and render text
+- skipping rendering and calculations for text above or below the camera
+- replacing `cursor_update_position` from editor loop to everywhere the cursor position changes
+- minor fixes and improvements
 
 `0.3` -> First working demo. Obscure in features, doesn't actually edit files and limited to keyboard movement.

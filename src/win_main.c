@@ -6,20 +6,18 @@
 
 #include "editor.h"
 
-static void end_gracefully(Editor* editor, HGLRC hglrc, HWND hwnd, HDC hdc);
-static void enable_vsync();
-static _Bool create_window(WNDCLASSEX *wc, HINSTANCE hinstance, HWND *hwnd);
+static void end_gracefully(Editor* restrict editor, HGLRC hglrc, HWND hwnd, HDC hdc);
+static _Bool create_window(WNDCLASSEX* restrict wc, HINSTANCE hinstance, HWND* restrict hwnd);
 static HGLRC create_temp_context(HDC hdc, HWND hwnd);
 static HGLRC create_context(HDC hdc, HWND hwnd);
 
-static const char* application_name = "DemiEditor";
-static _Bool resized  = 0;
+static const char* s_application_name = "DemiEditor";
+static _Bool s_resized  = 0;
 // because WndProc can't directly recieve arguments
-static Editor* get_editor(Editor* editor) {
+static Editor* get_editor(Editor* restrict editor) {
     static Editor* func_editor;
     if (editor) {
         func_editor = editor;
-        return func_editor;
     }
     return func_editor;   
 }
@@ -59,13 +57,18 @@ int32_t CALLBACK WinMain(
     hglrc = create_context(hdc, hwnd);
     wglDeleteContext(temp_context);
 
-    enable_vsync();
+    if (WGLEW_EXT_swap_control)
+        wglSwapIntervalEXT(1);
+    #ifdef demidebug
+    else 
+        warning(__LINE__, __FILE__, "vsync not supported");
+    #endif
     
     RECT clientRect;
     GetClientRect(hwnd, &clientRect);
     int32_t width = clientRect.right - clientRect.left;
     int32_t height = clientRect.bottom - clientRect.top;
-    Editor editor = editor_create((float)width, (float)height, GetDpiForWindow(hwnd));
+    Editor editor = editor_create((float)width, (float)height, GetDpiForWindow(hwnd), 127);
     get_editor(&editor);
 
     MSG msg;
@@ -79,12 +82,12 @@ int32_t CALLBACK WinMain(
     #endif
 
     while (running) {
-        if (resized) {
+        if (s_resized) {
             GetClientRect(hwnd, &clientRect);
             width = clientRect.right - clientRect.left;
             height = clientRect.bottom - clientRect.top;
             editor_window_size(&editor, (float)width, (float)height);
-            resized = 0;
+            s_resized = 0;
         }
 
         glClearColor(0.12156862745f, 0.12156862745f, 0.11372549019f, 1.0f);
@@ -101,8 +104,10 @@ int32_t CALLBACK WinMain(
         while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
             if (msg.message == WM_QUIT)
                 running = 0;
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+            else {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }
         }
     }
     
@@ -111,16 +116,19 @@ int32_t CALLBACK WinMain(
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param) {
-    Editor* editor = get_editor(NULL);
+    Editor* restrict editor = get_editor(NULL);
     switch(msg) {
         case WM_CLOSE: 
             PostQuitMessage(0);
         break;
         case WM_SIZE:
-            resized = 1;
+            s_resized = 1;
         break;
         case WM_DPICHANGED:
             editor_dpi(editor, LOWORD(w_param));
+        break;
+        case WM_MOUSEWHEEL:
+            editor_mouse_wheel(editor, (short)HIWORD(w_param));
         break;
         case WM_LBUTTONUP:
             editor_left_click(editor, (float)(short)LOWORD(l_param), (float)(short)HIWORD(l_param)); 
@@ -137,12 +145,28 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param) {
                     editor_enter(editor);
                 break;
                 default:
-                    editor_input(editor, w_param);
+                    if (w_param >= 0x20)
+                        editor_input(editor, w_param);
                 break;
             }
         break;
         case WM_KEYDOWN:
             switch(w_param) {
+                case 'V':
+                    if (IsClipboardFormatAvailable(CF_TEXT))
+                        if (GetKeyState(VK_CONTROL) & 0x8000)
+                            if (OpenClipboard(hwnd)) {
+                                HANDLE clipboard = GetClipboardData(CF_TEXT);
+                                if (clipboard) {
+                                    char* text = GlobalLock(clipboard);
+                                    if (text) {
+                                        editor_paste(editor, text);
+                                        GlobalUnlock(clipboard);
+                                    }
+                                }
+                                CloseClipboard();
+                            }
+                break;
                 case VK_LEFT:
                     editor_key_left(editor);
                 break;
@@ -167,26 +191,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param) {
     return DefWindowProc(hwnd, msg, w_param, l_param);
 }
 
-static void end_gracefully(Editor* editor, HGLRC hglrc, HWND hwnd, HDC hdc) {
-    editor_delete(editor);
+static void end_gracefully(Editor* restrict editor, HGLRC hglrc, HWND hwnd, HDC hdc) {
     wglMakeCurrent(NULL, NULL);
     wglDeleteContext(hglrc);
+    editor_delete(editor);
     ReleaseDC(hwnd, hdc);
     DestroyWindow(hwnd);
 }
 
-static void enable_vsync() {
-    if (!__wglewSwapIntervalEXT)
-        __wglewSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
-    if (__wglewSwapIntervalEXT)
-        __wglewSwapIntervalEXT(1);
-    #ifdef demidebug
-    else 
-        warning(__LINE__, __FILE__, "vsync not supported");
-    #endif
-}
-
-static _Bool create_window(WNDCLASSEX *wc, HINSTANCE hinstance, HWND *hwnd) {
+static _Bool create_window(WNDCLASSEX* restrict wc, HINSTANCE hinstance, HWND* restrict hwnd) {
     int32_t width  = 960;
     int32_t height = 540;
     const char* application_icon = "..\\resources\\icons\\placeholder.ico";
@@ -199,13 +212,13 @@ static _Bool create_window(WNDCLASSEX *wc, HINSTANCE hinstance, HWND *hwnd) {
     wc->style = CS_OWNDC;
     wc->lpfnWndProc = WndProc;
     wc->hInstance = hinstance;
-    wc->lpszClassName = application_name;
+    wc->lpszClassName = s_application_name;
     wc->hIcon = (HICON)LoadImage(hinstance, application_icon, IMAGE_ICON, 32, 32, LR_LOADFROMFILE);
     wc->hIconSm = (HICON)LoadImage(hinstance, application_icon, IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
     wc->hCursor = LoadCursor(NULL, IDC_ARROW);
     RegisterClassEx(wc);
     *hwnd = CreateWindowEx(
-        0, application_name, application_name, 
+        0, s_application_name, s_application_name, 
         WS_CAPTION | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SIZEBOX | WS_SYSMENU, 
         200, 200, width, height, 0, 0, hinstance, 0 
     );

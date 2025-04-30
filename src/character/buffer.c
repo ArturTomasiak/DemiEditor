@@ -10,50 +10,64 @@ Buffer buffer_create() {
     return buffer;
 }
 
-void buffer_delete(Buffer* buffer) {
+void buffer_delete(Buffer* restrict buffer) {
     free(buffer->content);
     buffer->length = 0;
     buffer->allocated_memory = 0;
 }
 
-void buffer_insert_char(Buffer* buffer, char val, uint64_t pos) {
+void buffer_insert_char(Buffer* restrict buffer, char val, uint64_t pos) {
     if (pos > buffer->length)
         pos = buffer->length;
     if (++buffer->length >= buffer->allocated_memory - 1) {
         buffer->allocated_memory += 500;
-        char* new_content = realloc(buffer->content, buffer->allocated_memory);
-        if (!new_content) {
+        realloc(buffer->content, buffer->allocated_memory);
+        if (!buffer) {
             error(err_memory_allocation);
             return;
         }
-        buffer->content = new_content;
     }
     memmove(buffer->content + pos + 1, buffer->content + pos, buffer->length - pos);
     buffer->content[pos] = val;
 }
 
-void buffer_delete_char(Buffer* buffer, uint64_t pos) {
+void buffer_delete_char(Buffer* restrict buffer, uint64_t pos) {
+    if (pos > buffer->length)
+        pos = buffer->length;
     memmove(buffer->content + pos - 1, buffer->content + pos, buffer->length - pos);
     buffer->length--;
 }
 
-void buffer_insert_string(Buffer* buffer, const char* str, uint64_t pos) {
+void buffer_insert_string(Buffer* restrict buffer, const char* str, uint64_t pos) {
     if (!str || !*str)
         return;
     if (pos > buffer->length)
         pos = buffer->length;
     uint64_t len = strlen(str);
-    buffer->length += len;
-    if (buffer->length >= buffer->allocated_memory) {
-        while (buffer-> length >= buffer->allocated_memory)
-            buffer->allocated_memory += len;
-        char* new_content = realloc(buffer->content, buffer->allocated_memory);
-        if (!new_content) {
-            error(err_memory_allocation);
-            return;
+    if (len >= 1) {
+        buffer->length += len;
+        if (buffer->length >= buffer->allocated_memory) {
+            while (buffer-> length >= buffer->allocated_memory)
+                buffer->allocated_memory += len;
+            realloc(buffer->content, buffer->allocated_memory);
+            if (!buffer) {
+                error(err_memory_allocation);
+                return;
+            }
         }
-        buffer->content = new_content;
+        memmove(buffer->content + pos + len, buffer->content + pos, buffer->length - pos - len);
+        memcpy(buffer->content + pos, str, len);
     }
-    memmove(buffer->content + pos + len, buffer-> content + pos, buffer->length - pos + 1 - len);
-    memcpy(buffer->content + pos, str, len);
+}
+
+BufferStack buffer_stack_create() {
+    BufferStack stack;
+    stack.buffer = malloc(10 * sizeof(Buffer));
+    stack.length = 0;
+    return stack;
+}
+
+void buffer_stack_delete(BufferStack* stack) {
+    free(stack->buffer);
+    stack->length = 0;
 }

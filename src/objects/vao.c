@@ -1,17 +1,17 @@
 #include "vao.h"
 
-vertex_array_object vao_create() {
-    vertex_array_object vao = {0};
+VertexArrayObject vao_create() {
+    VertexArrayObject vao = {0};
     glGenVertexArrays(1, &vao.renderer_id);
     return vao;
 }
 
-void vao_delete(vertex_array_object* vao) {
+void vao_delete(VertexArrayObject* vao) {
     glDeleteVertexArrays(1, &vao->renderer_id);
     vao->renderer_id = 0;
 }
 
-void vao_bind(const vertex_array_object* vao) {
+void vao_bind(const VertexArrayObject* vao) {
     glBindVertexArray(vao->renderer_id);
 }
 
@@ -46,7 +46,7 @@ void vao_add_element(vertex_buffer_layout* layout, uint32_t count, uint32_t type
     layout->elements[layout->element_count - 1].normalized = normalized;
 }
 
-void vao_add_buffer(const vertex_buffer_object* vbo, const vertex_buffer_layout* layout, const vertex_array_object* vao) {
+void vao_add_buffer(const VertexBufferObject* vbo, const vertex_buffer_layout* layout, const VertexArrayObject* vao) {
     vao_bind(vao);
     uint64_t offset = 0;
     for (uint32_t i = 0; i < layout->element_count; i++) {
