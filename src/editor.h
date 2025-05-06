@@ -1,3 +1,5 @@
+#pragma once
+
 #include "includes.h"
 
 #include <ft2build.h>
@@ -12,8 +14,7 @@
 #include "objects/vao.h"
 #include "objects/vbo.h"
 #include "math/math.h"
-
-
+#include "win_layer.h"
 
 typedef struct {
     Shader shader;

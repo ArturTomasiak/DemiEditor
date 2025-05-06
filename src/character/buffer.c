@@ -21,8 +21,8 @@ void buffer_insert_char(Buffer* restrict buffer, char val, uint64_t pos) {
         pos = buffer->length;
     if (++buffer->length >= buffer->allocated_memory - 1) {
         buffer->allocated_memory += 500;
-        realloc(buffer->content, buffer->allocated_memory);
-        if (!buffer) {
+        buffer->content = realloc(buffer->content, buffer->allocated_memory);
+        if (!buffer->content) {
             error(err_memory_allocation);
             return;
         }
@@ -48,14 +48,31 @@ void buffer_insert_string(Buffer* restrict buffer, const char* str, uint64_t pos
         if (buffer->length >= buffer->allocated_memory) {
             while (buffer-> length >= buffer->allocated_memory)
                 buffer->allocated_memory += len;
-            realloc(buffer->content, buffer->allocated_memory);
-            if (!buffer) {
+            buffer->content = realloc(buffer->content, buffer->allocated_memory);
+            if (!buffer->content) {
                 error(err_memory_allocation);
                 return;
             }
         }
         memmove(buffer->content + pos + len, buffer->content + pos, buffer->length - pos - len);
         memcpy(buffer->content + pos, str, len);
+    }
+}
+
+void buffer_replace_content(Buffer* restrict buffer, const char* str, uint64_t len) {
+    if (!str || !*str)
+        return;
+    if (len >= 1) {
+        buffer->length = len;
+        if (buffer->length >= buffer->allocated_memory) {
+            buffer->allocated_memory = len + 250;
+            buffer->content = realloc(buffer->content, buffer->allocated_memory);
+            if (!buffer->content) {
+                error(err_memory_allocation);
+                return;
+            }
+        }
+        memcpy(buffer->content, str, len);
     }
 }
 

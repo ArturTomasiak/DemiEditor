@@ -520,11 +520,12 @@ static void text_left_click(Editor* editor, float mouse_x, float mouse_y) {
 
 void editor_left_click(Editor* restrict editor, float mouse_x, float mouse_y) {
     mouse_y = editor->height - mouse_y;
-    if (mouse_x >= editor->settings_ico.xpos && mouse_x <= editor->settings_ico.xpos + editor->settings_ico.size && mouse_y <= editor->settings_ico.ypos && mouse_y >= editor->settings_ico.ypos - editor->settings_ico.size) {
+    if (mouse_x >= editor->settings_ico.xpos && mouse_x <= editor->settings_ico.xpos + editor->settings_ico.size && mouse_y <= editor->settings_ico.ypos && mouse_y >= editor->settings_ico.ypos - editor->settings_ico.size)
         editor->settings.display = !editor->settings.display;
-    }
     else if (mouse_x >= editor->file_ico.xpos && mouse_x <= editor->file_ico.xpos + editor->file_ico.size && mouse_y <= editor->file_ico.ypos && mouse_y >= editor->file_ico.ypos - editor->settings_ico.size) {
-        return; // TODO
+        open_file(&editor->buffer);
+        editor->cursor.position = 0;
+        cursor_update_position(&editor->cursor, &editor->buffer, &editor->character_map, editor->text_x, editor->text_y, editor->nl_height);
     }
     else if (editor->settings.display)
         settings_left_click(editor, mouse_x, mouse_y);
