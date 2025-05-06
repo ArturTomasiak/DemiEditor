@@ -4,13 +4,16 @@
 #define demiwindows
 #endif
 
+#ifdef NDEBUG
+#define assert(ignore) ((void)0)
+#endif
+
 #include <GL/glew.h>
 #include <GL/wglew.h>
 #include <GL/gl.h>
-#include <ft2build.h>
-#include FT_FREETYPE_H
-#include FT_LCD_FILTER_H
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 
 enum err_type {
@@ -20,9 +23,11 @@ enum err_type {
     err_memory_allocation,
     err_opengl_context,
     err_create_window,
+    err_texture,
     err_file,
     err_icon,
-    err_font
+    err_font,
+    err_png
 };
 
 // implemented in error

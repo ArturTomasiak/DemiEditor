@@ -1,12 +1,21 @@
 #include "editor.h"
 
-#define text_start 25.0f // placeholder until I figure out GUI
-
-static const float s_aspect_ratio = 16.0f / 9.0f; // target aspect ratio for consistency
-
 static void build_font(Editor* restrict editor);
 static void build_cursor(Editor* restrict editor);
 static void create_objects(Editor* restrict editor);
+static void file_ico_calculate(Editor* restrict editor);
+
+static void text_bind(Editor* restrict editor) {
+    shader_bind(&editor->shader);
+    vao_bind(&editor->vao);
+    vbo_bind(&editor->vbo);
+}
+
+static void ico_objects_bind(Editor* restrict editor) {
+    shader_bind(&editor->ico_objects.shader);
+    vao_bind(&editor->ico_objects.vao);
+    vbo_bind(&editor->ico_objects.vbo);
+}
 
 static void render_text_call(Editor* restrict editor, uint32_t length) {
     shader_set_uniform3f(&editor->shader, "text_color", 1.0f, 1.0f, 1.0f);
@@ -22,45 +31,34 @@ static void render_text(Editor* restrict editor) {
     float Xcopy = x;
     uint32_t working_index = 0;
     for (uint64_t i = 0; i < editor->buffer.length; i++) {
-
-        if ((uint8_t)editor->buffer.content[i] < editor->processed_chars) {
-            Character character = editor->character_map.character[(uint8_t)editor->buffer.content[i]];
-            if (editor->buffer.content[i] == '\n') {
-                y -= editor->nl_height;
-                x = Xcopy;
-            }
-            else if (editor->buffer.content[i] == ' ')
-                x += character.advance;
-            else {
-                float xpos = x + character.bearing.x;
-                float ypos = y - (editor->font_pixels - character.bearing.y);
-                if (ypos + editor->nl_height < editor->camera_y ||
-                    ypos > editor->height + editor->camera_y)
-                    continue;
-                memset(translate, 0.0f, 16 * sizeof(float));
-                memset(scale_matrix, 0.0f, 16 * sizeof(float));
-                math_identity_f4x4(scale_matrix, 1.0f);
-
-                editor->letter_map[working_index] = character.ch;
-                math_translate_f4x4(translate, xpos, ypos, 0);
-                math_scale_f4x4(scale_matrix, editor->font_pixels, editor->font_pixels, 0);
-                math_multiply_f4x4(editor->transforms + (working_index * 16), translate, scale_matrix);
-                x += character.advance;
-                working_index++;
-                if (working_index == editor->arr_limit) {
-                    render_text_call(editor, working_index);
-                    working_index = 0;
-                }
-            }
+        Character character = editor->character_map.character[(uint8_t)editor->buffer.content[i]];
+        if (editor->buffer.content[i] == '\n') {
+            y -= editor->nl_height;
+            x = Xcopy;
         }
-        #ifdef demidebug
+        else if (editor->buffer.content[i] == ' ')
+            x += character.advance;
         else {
-            char info_content[100];
-            sprintf(info_content, "%d char is not supported", (int32_t)editor->buffer.content[i]);
-            info(__LINE__, __FILE__, info_content);
-        }
-        #endif
+            float xpos = x + character.bearing.x;
+            float ypos = y - (editor->font_pixels - character.bearing.y);
+            if (ypos + editor->nl_height < editor->camera_y ||
+                ypos > editor->height + editor->camera_y)
+                continue;
+            memset(translate, 0.0f, 16 * sizeof(float));
+            memset(scale_matrix, 0.0f, 16 * sizeof(float));
+            math_identity_f4x4(scale_matrix, 1.0f);
 
+            editor->letter_map[working_index] = character.ch;
+            math_translate_f4x4(translate, xpos, ypos, 0);
+            math_scale_f4x4(scale_matrix, editor->font_pixels, editor->font_pixels, 0);
+            math_multiply_f4x4(editor->transforms + (working_index * 16), translate, scale_matrix);
+            x += character.advance;
+            working_index++;
+            if (working_index == editor->arr_limit) {
+                render_text_call(editor, working_index);
+                working_index = 0;
+            }
+        }  
     }
     if (working_index != 0)
         render_text_call(editor, working_index);
@@ -85,9 +83,28 @@ static void adjust_camera_to_cursor(Editor* restrict editor) {
     if (editor->cursor.x < editor->text_x)
         editor->camera_x = 0;
     adjust_ortographic(editor);
+    settings_ico_calculate(editor);
+    file_ico_calculate(editor);
+}
+
+static void file_ico_render(Editor* restrict editor) {
+    shader_set_uniformmat4f(&editor->ico_objects.shader, "projection", editor->projection, 1);
+    shader_set_uniformmat4f(&editor->ico_objects.shader, "model", editor->file_ico.model, 1);
+    shader_set_uniform1i(&editor->ico_objects.shader, "icon_texture", 0);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
 void editor_loop(Editor* restrict editor) {
+    ico_objects_bind(editor);
+    texture_bind(0, &editor->settings_ico.texture);
+    settings_ico_render(editor);
+    if (editor->settings.display)
+        settings_render(editor);
+
+    texture_bind(0, &editor->file_ico.texture);
+    file_ico_render(editor);
+
+    text_bind(editor);
     cursor_update_blink(&editor->cursor);
     cursor_render(&editor->cursor, &editor->shader);
     render_text(editor);
@@ -98,14 +115,17 @@ void editor_window_size(Editor* restrict editor, float width, float height) {
     editor->height = height;
     glViewport(0, 0, width, height);
     adjust_ortographic(editor);
-    editor->text_x = text_start * s_aspect_ratio;
-    editor->text_y = height - (text_start * s_aspect_ratio) - editor->character_map.character[1].bearing.y;
+    settings_ico_calculate(editor);
+    file_ico_calculate(editor);
+    editor->text_x = 40.0f * editor->aspect_ratio;
+    editor->text_y = height - 10.0f * editor->aspect_ratio - editor->character_map.character[1].bearing.y;
     cursor_update_position(&editor->cursor, &editor->buffer, &editor->character_map, editor->text_x, editor->text_y, editor->nl_height);
 }
 
 Editor editor_create(float width, float height, int32_t dpi, uint8_t supported_ch) {
     Editor editor               = {0};
     editor.scroll_speed         = 0.30f;
+    editor.aspect_ratio         = 16.0f / 9.0f; // target aspect ratio for consistency
     editor.processed_chars      = supported_ch;
     editor.font_pixels_setting  = 20;
     editor.line_spacing_setting = 1.5f;
@@ -167,6 +187,43 @@ Editor editor_create(float width, float height, int32_t dpi, uint8_t supported_c
         math_identity_f4x4(editor.transforms + (i * 16), 1.0f);
 
     create_objects(&editor);
+
+    // settings
+
+    editor.settings.display  = 0;
+    editor.settings_ico.size = 30.0f * editor.aspect_ratio;
+
+    const float quad_vertices[16] = {
+        0.0f, 1.0f,   0.0f, 1.0f,
+        0.0f, 0.0f,   0.0f, 0.0f,
+        1.0f, 1.0f,   1.0f, 1.0f,
+        1.0f, 0.0f,   1.0f, 0.0f
+    };
+    
+    editor.ico_objects.shader = shader_create("..\\resources\\shaders\\settings_ico_vertex.glsl", "..\\resources\\shaders\\settings_ico_fragment.glsl", 1);
+    
+    shader_bind(&editor.ico_objects.shader);
+
+    editor.ico_objects.vao = vao_create();
+    editor.ico_objects.vbo = vbo_create(quad_vertices, 4 * 4 * sizeof(quad_vertices));
+    
+    vertex_buffer_layout layout = vao_create_layout();
+    vao_add_element(&layout, 2, GL_FLOAT, sizeof(float), GL_FALSE);
+    vao_add_element(&layout, 2, GL_FLOAT, sizeof(float), GL_FALSE);
+    vao_add_buffer(&editor.ico_objects.vbo, &layout, &editor.ico_objects.vao);
+    vao_delete_layout(&layout);
+    
+    editor.settings_ico.texture = texture_create("..\\resources\\icons\\settings_ico.png");
+
+    settings_ico_calculate(&editor);
+
+    // file
+
+    editor.file_ico.size = 30.0f * editor.aspect_ratio;
+    editor.file_ico.texture = texture_create("..\\resources\\icons\\file_ico.png");
+    file_ico_calculate(&editor);
+
+    text_bind(&editor);
 
     return editor;
 }
@@ -262,7 +319,7 @@ static void build_cursor(Editor* restrict editor) {
 }
 
 static void create_objects(Editor* restrict editor) {
-    float vertex_data[8] = {
+    const float text_vertex_data[8] = {
         0.0f,1.0f,
         0.0f,0.0f,
         1.0f,1.0f,
@@ -270,12 +327,31 @@ static void create_objects(Editor* restrict editor) {
     };
 
     editor->vao = vao_create();
-    editor->vbo = vbo_create(vertex_data, sizeof(vertex_data));
+    editor->vbo = vbo_create(text_vertex_data, 4 * sizeof(text_vertex_data));
     
     vertex_buffer_layout layout = vao_create_layout();
     vao_add_element(&layout, 2, GL_FLOAT, sizeof(float), GL_FALSE);
     vao_add_buffer(&editor->vbo, &layout, &editor->vao);
     vao_delete_layout(&layout);
+}
+
+static void file_ico_calculate(Editor* restrict editor) {
+    editor->file_ico.xpos = editor->settings_ico.xpos;
+    editor->file_ico.ypos = editor->height - editor->settings_ico.xpos - editor->settings_ico.size;
+    ico_objects_bind(editor);
+    float xpos = editor->file_ico.xpos;
+    float ypos = editor->file_ico.ypos - editor->file_ico.size + editor->camera_y;
+
+    memset(editor->file_ico.scale_matrix, 0.0f, 16 * sizeof(float));
+    memset(editor->file_ico.translate, 0.0f, 16 * sizeof(float));
+
+    math_identity_f4x4(editor->file_ico.scale_matrix, 1.0f);
+    math_identity_f4x4(editor->file_ico.translate, 1.0f);
+    
+    math_translate_f4x4(editor->file_ico.translate, xpos, ypos, 0);
+    math_scale_f4x4(editor->file_ico.scale_matrix, editor->file_ico.size, editor->file_ico.size, 1.0f);
+    math_multiply_f4x4(editor->file_ico.model, editor->file_ico.translate, editor->file_ico.scale_matrix);
+    text_bind(editor);
 }
 
 void editor_backspace(Editor* restrict editor) {
@@ -288,7 +364,7 @@ void editor_backspace(Editor* restrict editor) {
 }
 
 void editor_tab(Editor* restrict editor) {
-    buffer_insert_string(&editor->buffer, "    ", editor->cursor.position);
+    buffer_insert_string(&editor->buffer, "    ", editor->cursor.position, 4);
     editor->cursor.position += 4;
     cursor_update_position(&editor->cursor, &editor->buffer, &editor->character_map, editor->text_x, editor->text_y, editor->nl_height);
     adjust_camera_to_cursor(editor);
@@ -302,11 +378,25 @@ void editor_enter(Editor* restrict editor) {
 }
 
 void editor_input(Editor* restrict editor, char ch) {
-    buffer_insert_char(&editor->buffer, ch, editor->cursor.position);
+    if (ch < editor->processed_chars)
+        buffer_insert_char(&editor->buffer, ch, editor->cursor.position);
     if (editor->cursor.position < editor->buffer.length)
         editor->cursor.position++;
     cursor_update_position(&editor->cursor, &editor->buffer, &editor->character_map, editor->text_x, editor->text_y, editor->nl_height);
     adjust_camera_to_cursor(editor);
+}
+
+void editor_paste(Editor* restrict editor, const char* restrict text) {
+    uint32_t len = 0;
+    while (text[len] != '\0') {
+        if (!(text[len] >= 20 && text[len] < editor->processed_chars))
+            if (text[len] != '\n')
+                return; // ignore ctrl v if any part of the clipboard sends invalid char
+        len++;
+    }
+    buffer_insert_string(&editor->buffer, text, editor->cursor.position, len);
+    editor->cursor.position += len;
+    cursor_update_position(&editor->cursor, &editor->buffer, &editor->character_map, editor->text_x, editor->text_y, editor->nl_height);
 }
 
 void editor_key_left(Editor* restrict editor) {
@@ -328,6 +418,7 @@ void editor_key_up(Editor* restrict editor) {
         return;
     _Bool repeat = 1;
     uint32_t pos = 0;
+
     reach_nl:
     while (editor->cursor.position > 0 && editor->buffer.content[editor->cursor.position - 1] != '\n') {
         editor->cursor.position--;
@@ -339,12 +430,12 @@ void editor_key_up(Editor* restrict editor) {
         repeat = 0;
         goto reach_nl;
     }
+    
     while (pos != 0 && editor->buffer.content[editor->cursor.position] != '\n') {
         editor->cursor.position++;
         pos--;
     }
     cursor_update_position(&editor->cursor, &editor->buffer, &editor->character_map, editor->text_x, editor->text_y, editor->nl_height);
-    adjust_camera_to_cursor(editor);
     adjust_camera_to_cursor(editor);
 }
 
@@ -364,7 +455,6 @@ void editor_key_down(Editor* restrict editor) {
         pos--;
     }
     cursor_update_position(&editor->cursor, &editor->buffer, &editor->character_map, editor->text_x, editor->text_y, editor->nl_height);
-    adjust_camera_to_cursor(editor);
     adjust_camera_to_cursor(editor);
 }
 
@@ -387,22 +477,22 @@ void editor_mouse_wheel(Editor* restrict editor, int32_t delta) {
     if (editor->camera_y > 0)
         editor->camera_y = 0;
     adjust_ortographic(editor);
+    settings_ico_calculate(editor);
+    file_ico_calculate(editor);
 }
 
-void editor_left_click(Editor* restrict editor, float mouse_x, float mouse_y) {
-    mouse_y = editor->height - mouse_y;
-    float line_height = editor->nl_height * editor->line_spacing;
-    float y_start = editor->text_y + line_height;
+static void text_left_click(Editor* editor, float mouse_x, float mouse_y) {
+    float y_start = editor->text_y + editor->nl_height;
     float y_end   = editor->text_y;
     uint64_t index_y = 0;
-    y_start -= line_height;
-    y_end   -= line_height;
+    y_start -= editor->nl_height;
+    y_end   -= editor->nl_height;
     for (uint64_t i = 0; i < editor->buffer.length; i++) {
         if (editor->buffer.content[i] == '\n') {
             if (mouse_y <= y_start && mouse_y >= y_end)
                 index_y = i + 1;
-            y_start -= line_height;
-            y_end   -= line_height;
+            y_start -= editor->nl_height;
+            y_end   -= editor->nl_height;
         }
     }
     
@@ -410,9 +500,9 @@ void editor_left_click(Editor* restrict editor, float mouse_x, float mouse_y) {
     float x_end   = x_start;
     editor->cursor.position = index_y;
     if (editor->buffer.content[index_y] == '\n')
-        return;
+        goto left_click_end;
     if (mouse_x < x_start)
-        return;
+        goto left_click_end;
     for (int i = index_y; index_y < editor->buffer.length && editor->buffer.content[i] != '\n'; i++) {
         Character character = editor->character_map.character[(uint16_t)editor->buffer.content[i]];
         x_start = x_end;
@@ -420,16 +510,24 @@ void editor_left_click(Editor* restrict editor, float mouse_x, float mouse_y) {
         index_y = i;
         editor->cursor.position = i;
         if (mouse_x >= x_start && mouse_x <= x_end) {
-            editor->cursor.position++;
-            return;
+            goto left_click_end;
         }
         editor->cursor.position++;
     }
+    left_click_end:
     cursor_update_position(&editor->cursor, &editor->buffer, &editor->character_map, editor->text_x, editor->text_y, editor->nl_height);
 }
 
-void editor_paste(Editor* restrict editor, const char* restrict text) {
-    buffer_insert_string(&editor->buffer, text, editor->cursor.position);
-    editor->cursor.position += strlen(text);
-    cursor_update_position(&editor->cursor, &editor->buffer, &editor->character_map, editor->text_x, editor->text_y, editor->nl_height);
+void editor_left_click(Editor* restrict editor, float mouse_x, float mouse_y) {
+    mouse_y = editor->height - mouse_y;
+    if (mouse_x >= editor->settings_ico.xpos && mouse_x <= editor->settings_ico.xpos + editor->settings_ico.size && mouse_y <= editor->settings_ico.ypos && mouse_y >= editor->settings_ico.ypos - editor->settings_ico.size) {
+        editor->settings.display = !editor->settings.display;
+    }
+    else if (mouse_x >= editor->file_ico.xpos && mouse_x <= editor->file_ico.xpos + editor->file_ico.size && mouse_y <= editor->file_ico.ypos && mouse_y >= editor->file_ico.ypos - editor->settings_ico.size) {
+        return; // TODO
+    }
+    else if (editor->settings.display)
+        settings_left_click(editor, mouse_x, mouse_y);
+    else
+        text_left_click(editor, mouse_x, mouse_y);
 }

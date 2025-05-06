@@ -202,7 +202,7 @@ static void end_gracefully(Editor* restrict editor, HGLRC hglrc, HWND hwnd, HDC 
 static _Bool create_window(WNDCLASSEX* restrict wc, HINSTANCE hinstance, HWND* restrict hwnd) {
     int32_t width  = 960;
     int32_t height = 540;
-    const char* application_icon = "..\\resources\\icons\\placeholder.ico";
+    const char* application_icon = "..\\resources\\icons\\icon.ico";
     DWORD attributes = GetFileAttributesA(application_icon);
     if (attributes == INVALID_FILE_ATTRIBUTES || attributes & FILE_ATTRIBUTE_DIRECTORY) {
         error(err_icon);

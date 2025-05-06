@@ -25,6 +25,9 @@ void error(enum err_type err) {
         case err_create_window:
             error = "could not create window";
         break;
+        case err_texture:
+            error = "texture creation failed";
+        break;
         case err_file:
             error = "missing files in resources";
         break;
@@ -33,6 +36,9 @@ void error(enum err_type err) {
         break;
         case err_font:
             error = "missing font in resources";
+        break;
+        case err_png: 
+            error = "invalid png in resources";
         break;
         default:
             error = "invalid error message";

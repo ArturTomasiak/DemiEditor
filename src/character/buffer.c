@@ -38,12 +38,11 @@ void buffer_delete_char(Buffer* restrict buffer, uint64_t pos) {
     buffer->length--;
 }
 
-void buffer_insert_string(Buffer* restrict buffer, const char* str, uint64_t pos) {
+void buffer_insert_string(Buffer* restrict buffer, const char* str, uint64_t pos, uint32_t len) {
     if (!str || !*str)
         return;
     if (pos > buffer->length)
         pos = buffer->length;
-    uint64_t len = strlen(str);
     if (len >= 1) {
         buffer->length += len;
         if (buffer->length >= buffer->allocated_memory) {

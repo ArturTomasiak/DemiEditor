@@ -16,7 +16,7 @@ Buffer buffer_create();
 void buffer_delete(Buffer* restrict buffer);
 void buffer_insert_char(Buffer* restrict buffer, char val, uint64_t pos);
 void buffer_delete_char(Buffer* restrict buffer, uint64_t pos);
-void buffer_insert_string(Buffer* restrict buffer, const char* str, uint64_t pos);
+void buffer_insert_string(Buffer* restrict buffer, const char* str, uint64_t pos, uint32_t len);
 
 BufferStack buffer_stack_create();
 void buffer_stack_delete(BufferStack* stack);
