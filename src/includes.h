@@ -2,6 +2,8 @@
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__)
 #define demiwindows
+#define UNICODE
+#define _UNICODE
 #endif
 
 #ifdef NDEBUG

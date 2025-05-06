@@ -11,7 +11,7 @@ static _Bool create_window(WNDCLASSEX* restrict wc, HINSTANCE hinstance, HWND* r
 static HGLRC create_temp_context(HDC hdc, HWND hwnd);
 static HGLRC create_context(HDC hdc, HWND hwnd);
 
-static const char* s_application_name = "DemiEditor";
+static const wchar_t* s_application_name = L"DemiEditor";
 static _Bool s_resized  = 0;
 // because WndProc can't directly recieve arguments
 static Editor* get_editor(Editor* restrict editor) {
@@ -68,7 +68,7 @@ int32_t CALLBACK WinMain(
     GetClientRect(hwnd, &clientRect);
     int32_t width = clientRect.right - clientRect.left;
     int32_t height = clientRect.bottom - clientRect.top;
-    Editor editor = editor_create((float)width, (float)height, GetDpiForWindow(hwnd), 127);
+    Editor editor = editor_create((float)width, (float)height, GetDpiForWindow(hwnd));
     get_editor(&editor);
 
     MSG msg;
@@ -153,12 +153,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param) {
         case WM_KEYDOWN:
             switch(w_param) {
                 case 'V':
-                    if (IsClipboardFormatAvailable(CF_TEXT))
+                    if (IsClipboardFormatAvailable(CF_UNICODETEXT))
                         if (GetKeyState(VK_CONTROL) & 0x8000)
                             if (OpenClipboard(hwnd)) {
-                                HANDLE clipboard = GetClipboardData(CF_TEXT);
+                                HANDLE clipboard = GetClipboardData(CF_UNICODETEXT);
                                 if (clipboard) {
-                                    char* text = GlobalLock(clipboard);
+                                    wchar_t* text = GlobalLock(clipboard);
                                     if (text) {
                                         editor_paste(editor, text);
                                         GlobalUnlock(clipboard);
@@ -202,8 +202,8 @@ static void end_gracefully(Editor* restrict editor, HGLRC hglrc, HWND hwnd, HDC 
 static _Bool create_window(WNDCLASSEX* restrict wc, HINSTANCE hinstance, HWND* restrict hwnd) {
     int32_t width  = 960;
     int32_t height = 540;
-    const char* application_icon = "..\\resources\\icons\\icon.ico";
-    DWORD attributes = GetFileAttributesA(application_icon);
+    const wchar_t* application_icon = L"..\\resources\\icons\\icon.ico";
+    DWORD attributes = GetFileAttributes(application_icon);
     if (attributes == INVALID_FILE_ATTRIBUTES || attributes & FILE_ATTRIBUTE_DIRECTORY) {
         error(err_icon);
         return 0;

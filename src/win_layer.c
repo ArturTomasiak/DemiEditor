@@ -1,11 +1,13 @@
-#include "win_layer.h"
+#include "platform_layer.h"
+#ifdef demiwindows
+
 #include <windows.h>
 #include <commdlg.h>
-
+// This doesn't actually work, first step is to check the file's encoding
 void open_file(Buffer* restrict buffer) {
     char fileName[MAX_PATH] = "";
 
-    OPENFILENAME ofn;
+    OPENFILENAMEA ofn;
     ZeroMemory(&ofn, sizeof(ofn));
     ofn.lStructSize = sizeof(ofn);
     ofn.lpstrFilter = "All Files\0*.*\0";
@@ -14,20 +16,19 @@ void open_file(Buffer* restrict buffer) {
     ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
     ofn.lpstrTitle = "Select a file to open";
 
-    if (GetOpenFileName(&ofn)) {
+    if (GetOpenFileNameA(&ofn)) {
         FILE* file = fopen(fileName, "rb");
         if (!file) {
-            perror("Error opening file");
             return;
         }
 
         fseek(file, 0, SEEK_END);
-        long size = ftell(file);
+        uint64_t size = ftell(file);
         rewind(file);
 
         char* content = malloc(size + 1);
         if (!content) {
-            perror("Memory allocation failed");
+            error(err_memory_allocation);
             fclose(file);
             return;
         }
@@ -36,12 +37,9 @@ void open_file(Buffer* restrict buffer) {
         content[size] = '\0';
         fclose(file);
 
-        printf("File contents:\n%s\n", content);
-
-        buffer_replace_content(buffer, content, strlen(content));
-
+        buffer_replace_content(buffer, content, size + 1);
         free(content);
-    } else {
-        printf("No file selected or dialog cancelled.\n");
     }
 }   
+
+#endif

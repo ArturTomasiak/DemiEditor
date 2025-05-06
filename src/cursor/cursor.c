@@ -10,7 +10,7 @@ Cursor cursor_create() {
 void cursor_update_position(Cursor* restrict cursor, Buffer* restrict buffer, CharacterMap* restrict character_map, float x, float y, float nl_height) {
     float start_x = x;
     for (uint64_t i = 0; i < cursor->position && i < buffer->length; i++) {
-        Character character = character_map->character[(uint8_t)buffer->content[i]];
+        Character character = character_map->character[(int32_t)buffer->content[i]];
         if (buffer->content[i] == '\n') {
             y -= nl_height;
             x = start_x;

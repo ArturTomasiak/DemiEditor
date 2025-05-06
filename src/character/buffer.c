@@ -16,7 +16,7 @@ void buffer_delete(Buffer* restrict buffer) {
     buffer->allocated_memory = 0;
 }
 
-void buffer_insert_char(Buffer* restrict buffer, char val, uint64_t pos) {
+void buffer_insert_char(Buffer* restrict buffer, wchar_t val, uint64_t pos) {
     if (pos > buffer->length)
         pos = buffer->length;
     if (++buffer->length >= buffer->allocated_memory - 1) {
@@ -38,7 +38,7 @@ void buffer_delete_char(Buffer* restrict buffer, uint64_t pos) {
     buffer->length--;
 }
 
-void buffer_insert_string(Buffer* restrict buffer, const char* str, uint64_t pos, uint32_t len) {
+void buffer_insert_string(Buffer* restrict buffer, const wchar_t* str, uint64_t pos, uint32_t len) {
     if (!str || !*str)
         return;
     if (pos > buffer->length)
@@ -59,7 +59,7 @@ void buffer_insert_string(Buffer* restrict buffer, const char* str, uint64_t pos
     }
 }
 
-void buffer_replace_content(Buffer* restrict buffer, const char* str, uint64_t len) {
+void buffer_replace_content(Buffer* restrict buffer, const wchar_t* str, uint64_t len) {
     if (!str || !*str)
         return;
     if (len >= 1) {

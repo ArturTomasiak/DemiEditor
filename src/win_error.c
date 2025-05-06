@@ -5,46 +5,46 @@
 #include <windows.h>
 
 void error(enum err_type err) {
-    char* error;
+    wchar_t* error;
     switch (err) {
         case err_glew_initialization:
-            error = "could not initialize glew";
+            error = L"could not initialize glew";
         break;
         case err_freetype_initialization:
-            error = "could not initialize freetype2";
+            error = L"could not initialize freetype2";
         break;
         case err_shader_compilation:
-            error = "shader compilation failed";
+            error = L"shader compilation failed";
         break;
         case err_memory_allocation:
-            error = "memory allocation failed";
+            error = L"memory allocation failed";
         break;
         case err_opengl_context:
-            error = "could not create opengl context";
+            error = L"could not create opengl context";
         break;
         case err_create_window:
-            error = "could not create window";
+            error = L"could not create window";
         break;
         case err_texture:
-            error = "texture creation failed";
+            error = L"texture creation failed";
         break;
         case err_file:
-            error = "missing files in resources";
+            error = L"missing files in resources";
         break;
         case err_icon:
-            error = "missing icon in resources";
+            error = L"missing icon in resources";
         break;
         case err_font:
-            error = "missing font in resources";
+            error = L"missing font in resources";
         break;
         case err_png: 
-            error = "invalid png in resources";
+            error = L"invalid png in resources";
         break;
         default:
-            error = "invalid error message";
+            error = L"invalid error message";
         break;
     }
-    MessageBox(NULL, error, "Error", MB_ICONERROR | MB_OK);
+    MessageBox(NULL, error, L"Error", MB_ICONERROR | MB_OK);
     PostQuitMessage(-1);
 }
 

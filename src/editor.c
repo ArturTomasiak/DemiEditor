@@ -31,7 +31,9 @@ static void render_text(Editor* restrict editor) {
     float Xcopy = x;
     uint32_t working_index = 0;
     for (uint64_t i = 0; i < editor->buffer.length; i++) {
-        Character character = editor->character_map.character[(uint8_t)editor->buffer.content[i]];
+        Character character = editor->character_map.character[(int32_t)editor->buffer.content[i]];
+        if (!character.processed)
+            continue;
         if (editor->buffer.content[i] == '\n') {
             y -= editor->nl_height;
             x = Xcopy;
@@ -122,13 +124,14 @@ void editor_window_size(Editor* restrict editor, float width, float height) {
     cursor_update_position(&editor->cursor, &editor->buffer, &editor->character_map, editor->text_x, editor->text_y, editor->nl_height);
 }
 
-Editor editor_create(float width, float height, int32_t dpi, uint8_t supported_ch) {
+Editor editor_create(float width, float height, int32_t dpi) {
     Editor editor               = {0};
     editor.scroll_speed         = 0.30f;
     editor.aspect_ratio         = 16.0f / 9.0f; // target aspect ratio for consistency
-    editor.processed_chars      = supported_ch;
     editor.font_pixels_setting  = 20;
     editor.line_spacing_setting = 1.5f;
+
+    glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &editor.processed_chars); // placeholder solution
     
     glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &editor.arr_limit);
     editor.arr_limit = editor.arr_limit >> 5; // return here if anything breaks
@@ -174,7 +177,7 @@ Editor editor_create(float width, float height, int32_t dpi, uint8_t supported_c
     build_font(&editor);
     // editor.dpi hasn't set nl_height because character map didn't exist
     editor.nl_height = editor.character_map.character['\n'].size.y * editor.line_spacing;
-    
+
     editor.buffer = buffer_create();
     editor.cursor = cursor_create();
     editor.undo = buffer_stack_create();
@@ -284,16 +287,22 @@ projection_failed:
 static void build_font(Editor* restrict editor) {
     FT_Set_Pixel_Sizes(editor->ft_face, editor->font_pixels, editor->font_pixels);
     glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_R8, editor->font_pixels, editor->font_pixels, editor->processed_chars, 0, GL_RED, GL_UNSIGNED_BYTE, 0);
-    for (uint16_t c = 0; c < editor->processed_chars; c++) {
+    for (int32_t c = 0; c < editor->processed_chars; c++) {
         if (FT_Load_Char(editor->ft_face, c, FT_LOAD_RENDER)) {
             #ifdef demidebug
             warning(__LINE__, __FILE__, "failed to load glyph");
             #endif
             continue;
         }
+        else if (editor->ft_face->glyph->bitmap.width == 0 || editor->ft_face->glyph->bitmap.rows == 0 ||
+            editor->ft_face->glyph->bitmap.width > editor->font_pixels || editor->ft_face->glyph->bitmap.rows > editor->font_pixels) {
+                Character character = {(wchar_t)c, {0, 0}, {0, 0}, 0, 0};
+                editor->character_map.character[c] = character;
+                continue;
+            }
         glTexSubImage3D(
             GL_TEXTURE_2D_ARRAY,
-            0, 0, 0, (int32_t)c,
+            0, 0, 0, c,
             editor->ft_face->glyph->bitmap.width,
             editor->ft_face->glyph->bitmap.rows, 1,
             GL_RED,
@@ -301,10 +310,11 @@ static void build_font(Editor* restrict editor) {
             editor->ft_face->glyph->bitmap.buffer
         );
         Character character = {
-            (char)c,
+            (wchar_t)c,
             {editor->ft_face->glyph->bitmap.width, editor->ft_face->glyph->bitmap.rows},
             {editor->ft_face->glyph->bitmap_left, editor->ft_face->glyph->bitmap_top},
-            editor->ft_face->glyph->advance.x >> 6 // divide by 64
+            editor->ft_face->glyph->advance.x >> 6, // divide by 64
+            1
         };
         editor->character_map.character[c] = character;
     }
@@ -364,20 +374,20 @@ void editor_backspace(Editor* restrict editor) {
 }
 
 void editor_tab(Editor* restrict editor) {
-    buffer_insert_string(&editor->buffer, "    ", editor->cursor.position, 4);
+    buffer_insert_string(&editor->buffer, L"    ", editor->cursor.position, 4);
     editor->cursor.position += 4;
     cursor_update_position(&editor->cursor, &editor->buffer, &editor->character_map, editor->text_x, editor->text_y, editor->nl_height);
     adjust_camera_to_cursor(editor);
 }
 
 void editor_enter(Editor* restrict editor) {
-    buffer_insert_char(&editor->buffer, '\n', editor->cursor.position);
+    buffer_insert_char(&editor->buffer, L'\n', editor->cursor.position);
     editor->cursor.position++;
     cursor_update_position(&editor->cursor, &editor->buffer, &editor->character_map, editor->text_x, editor->text_y, editor->nl_height);
     adjust_camera_to_cursor(editor);
 }
 
-void editor_input(Editor* restrict editor, char ch) {
+void editor_input(Editor* restrict editor, wchar_t ch) {
     if (ch < editor->processed_chars)
         buffer_insert_char(&editor->buffer, ch, editor->cursor.position);
     if (editor->cursor.position < editor->buffer.length)
@@ -386,12 +396,12 @@ void editor_input(Editor* restrict editor, char ch) {
     adjust_camera_to_cursor(editor);
 }
 
-void editor_paste(Editor* restrict editor, const char* restrict text) {
+void editor_paste(Editor* restrict editor, const wchar_t* restrict text) {
     uint32_t len = 0;
     while (text[len] != '\0') {
         if (!(text[len] >= 20 && text[len] < editor->processed_chars))
             if (text[len] != '\n')
-                return; // ignore ctrl v if any part of the clipboard sends invalid char
+                return;
         len++;
     }
     buffer_insert_string(&editor->buffer, text, editor->cursor.position, len);
@@ -504,7 +514,7 @@ static void text_left_click(Editor* editor, float mouse_x, float mouse_y) {
     if (mouse_x < x_start)
         goto left_click_end;
     for (int i = index_y; index_y < editor->buffer.length && editor->buffer.content[i] != '\n'; i++) {
-        Character character = editor->character_map.character[(uint16_t)editor->buffer.content[i]];
+        Character character = editor->character_map.character[(int32_t)editor->buffer.content[i]];
         x_start = x_end;
         x_end += character.advance;
         index_y = i;

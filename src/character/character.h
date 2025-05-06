@@ -12,10 +12,11 @@ typedef struct {
 } Bearing;
 
 typedef struct {
-    char ch;
+    wchar_t ch;
     Size size;
     Bearing bearing;
     uint32_t advance;
+    _Bool processed;
 } Character;
 
 typedef struct {

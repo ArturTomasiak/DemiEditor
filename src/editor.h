@@ -14,7 +14,7 @@
 #include "objects/vao.h"
 #include "objects/vbo.h"
 #include "math/math.h"
-#include "win_layer.h"
+#include "platform_layer.h"
 
 typedef struct {
     Shader shader;
@@ -43,7 +43,7 @@ typedef struct {
     float line_spacing;
     float dpi_scale;
     
-    uint8_t processed_chars;
+    int32_t processed_chars;
     int32_t arr_limit;
     
     int32_t* letter_map; 
@@ -104,7 +104,7 @@ void settings_left_click(Editor* restrict editor, float mouse_x, float mouse_y);
 
 void editor_loop(Editor* restrict editor);
 void editor_window_size(Editor* restrict editor, float width, float height);
-Editor editor_create(float width, float height, int32_t dpi, uint8_t supported_ch);
+Editor editor_create(float width, float height, int32_t dpi);
 void editor_delete(Editor* restrict editor);
 void editor_dpi(Editor* restrict editor, int32_t dpi);
 _Bool alloc_variables(Editor* restrict editor);
@@ -117,8 +117,8 @@ _Bool alloc_variables(Editor* restrict editor);
 void editor_backspace(Editor* restrict editor);
 void editor_tab(Editor* restrict editor);
 void editor_enter(Editor* restrict editor);
-void editor_input(Editor* restrict editor, char ch);
-void editor_paste(Editor* restrict editor, const char* restrict text);
+void editor_input(Editor* restrict editor, wchar_t ch);
+void editor_paste(Editor* restrict editor, const wchar_t* restrict text);
 
 void editor_key_left(Editor* restrict editor);
 void editor_key_right(Editor* restrict editor);

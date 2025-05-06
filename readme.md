@@ -6,6 +6,8 @@ A work in progress lightweight text editor written in C using opengl, freetype a
 
 ![demi screenshot](screenshot.png)
 
+*p.s. ignore testbed; it's commits are not meant to work*
+
 ### Table of Contents
 
 - [Project Structure](#project-structure)
@@ -160,6 +162,11 @@ cmake --install . --config Release
 ```
 
 ### Version History
+
+`0.6` -> changelog:
+- change from ANSII to UNICODE
+- added file saving via ctrl s
+- added file opening via file explorer
 
 `0.5` -> changelog:
 - fixed editor_left_click
