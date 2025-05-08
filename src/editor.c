@@ -34,11 +34,11 @@ static void render_text(Editor* restrict editor) {
         Character character = editor->character_map.character[(int32_t)editor->buffer.content[i]];
         if (!character.processed)
             continue;
-        if (editor->buffer.content[i] == '\n') {
+        if (editor->buffer.content[i] == L'\n') {
             y -= editor->nl_height;
             x = Xcopy;
         }
-        else if (editor->buffer.content[i] == ' ')
+        else if (editor->buffer.content[i] == L' ')
             x += character.advance;
         else {
             float xpos = x + character.bearing.x;
@@ -147,7 +147,7 @@ Editor editor_create(float width, float height, int32_t dpi) {
     glEnable(GL_MULTISAMPLE);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    editor.shader = shader_create("..\\resources\\shaders\\vertex.glsl", "..\\resources\\shaders\\fragment.glsl", editor.arr_limit);
+    editor.shader = shader_create("..\\resources\\shaders\\text_vertex.glsl", "..\\resources\\shaders\\text_fragment.glsl", editor.arr_limit);
 
     shader_bind(&editor.shader);
     editor_window_size(&editor, width, height);
@@ -176,7 +176,7 @@ Editor editor_create(float width, float height, int32_t dpi) {
 
     build_font(&editor);
     // editor.dpi hasn't set nl_height because character map didn't exist
-    editor.nl_height = editor.character_map.character['\n'].size.y * editor.line_spacing;
+    editor.nl_height = editor.character_map.character[L'\n'].size.y * editor.line_spacing;
 
     editor.buffer = buffer_create();
     editor.cursor = cursor_create();
@@ -203,7 +203,7 @@ Editor editor_create(float width, float height, int32_t dpi) {
         1.0f, 0.0f,   1.0f, 0.0f
     };
     
-    editor.ico_objects.shader = shader_create("..\\resources\\shaders\\settings_ico_vertex.glsl", "..\\resources\\shaders\\settings_ico_fragment.glsl", 1);
+    editor.ico_objects.shader = shader_create("..\\resources\\shaders\\ico_vertex.glsl", "..\\resources\\shaders\\ico_fragment.glsl", 1);
     
     shader_bind(&editor.ico_objects.shader);
 
@@ -254,7 +254,7 @@ void editor_dpi(Editor* restrict editor, int32_t dpi) {
     editor->font_pixels  = editor->font_pixels_setting * editor->dpi_scale;
     editor->line_spacing = editor->line_spacing_setting * editor->dpi_scale;
     if (editor->character_map.character)
-        editor->nl_height = editor->character_map.character['\n'].size.y * editor->line_spacing;
+        editor->nl_height = editor->character_map.character[L'\n'].size.y * editor->line_spacing;
 }
 
 _Bool alloc_variables(Editor* restrict editor) {
@@ -294,12 +294,15 @@ static void build_font(Editor* restrict editor) {
             #endif
             continue;
         }
+        else if (c == ' ' || c == '\t' || c == '\r' || c == '\n' || iswspace(c))
+            goto get_processed;
         else if (editor->ft_face->glyph->bitmap.width == 0 || editor->ft_face->glyph->bitmap.rows == 0 ||
             editor->ft_face->glyph->bitmap.width > editor->font_pixels || editor->ft_face->glyph->bitmap.rows > editor->font_pixels) {
                 Character character = {(wchar_t)c, {0, 0}, {0, 0}, 0, 0};
                 editor->character_map.character[c] = character;
                 continue;
-            }
+        }
+        get_processed:
         glTexSubImage3D(
             GL_TEXTURE_2D_ARRAY,
             0, 0, 0, c,
@@ -322,7 +325,7 @@ static void build_font(Editor* restrict editor) {
 
 static void build_cursor(Editor* restrict editor) {
     editor->cursor.blink_rate = 200;
-    editor->cursor.character = editor->character_map.character['|'];
+    editor->cursor.character = editor->character_map.character[L'|'];
     editor->cursor.x = editor->text_x;
     editor->cursor.y = editor->text_y;
     editor->cursor.font_pixels = editor->font_pixels;
@@ -397,13 +400,7 @@ void editor_input(Editor* restrict editor, wchar_t ch) {
 }
 
 void editor_paste(Editor* restrict editor, const wchar_t* restrict text) {
-    uint32_t len = 0;
-    while (text[len] != '\0') {
-        if (!(text[len] >= 20 && text[len] < editor->processed_chars))
-            if (text[len] != '\n')
-                return;
-        len++;
-    }
+    uint64_t len = wcslen(text);
     buffer_insert_string(&editor->buffer, text, editor->cursor.position, len);
     editor->cursor.position += len;
     cursor_update_position(&editor->cursor, &editor->buffer, &editor->character_map, editor->text_x, editor->text_y, editor->nl_height);
@@ -430,7 +427,7 @@ void editor_key_up(Editor* restrict editor) {
     uint32_t pos = 0;
 
     reach_nl:
-    while (editor->cursor.position > 0 && editor->buffer.content[editor->cursor.position - 1] != '\n') {
+    while (editor->cursor.position > 0 && editor->buffer.content[editor->cursor.position - 1] != L'\n') {
         editor->cursor.position--;
         if (repeat == 1)
             pos++;
@@ -441,7 +438,7 @@ void editor_key_up(Editor* restrict editor) {
         goto reach_nl;
     }
     
-    while (pos != 0 && editor->buffer.content[editor->cursor.position] != '\n') {
+    while (pos != 0 && editor->buffer.content[editor->cursor.position] != L'\n') {
         editor->cursor.position++;
         pos--;
     }
@@ -453,14 +450,14 @@ void editor_key_down(Editor* restrict editor) {
     uint32_t pos = 0;
     if (editor->cursor.position == editor->buffer.length)
         return;
-    while (editor->cursor.position > 0 && editor->buffer.content[editor->cursor.position - 1] != '\n') {
+    while (editor->cursor.position > 0 && editor->buffer.content[editor->cursor.position - 1] != L'\n') {
         editor->cursor.position--;
         pos++;
     }
     editor->cursor.position++;
-    while (editor->cursor.position + 1 < editor->buffer.length && editor->buffer.content[editor->cursor.position - 1] != '\n')
+    while (editor->cursor.position + 1 < editor->buffer.length && editor->buffer.content[editor->cursor.position - 1] != L'\n')
         editor->cursor.position++; 
-    while (pos != 0 && editor->buffer.content[editor->cursor.position] != '\n') {
+    while (pos != 0 && editor->buffer.content[editor->cursor.position] != L'\n') {
         editor->cursor.position++;
         pos--;
     }
@@ -475,7 +472,7 @@ void editor_key_home(Editor* restrict editor) {
 }
 
 void editor_key_end(Editor* restrict editor) {
-    while (editor->cursor.position < editor->buffer.length && editor->buffer.content[editor->cursor.position] != '\n')
+    while (editor->cursor.position < editor->buffer.length && editor->buffer.content[editor->cursor.position] != L'\n')
         editor->cursor.position++;
     cursor_update_position(&editor->cursor, &editor->buffer, &editor->character_map, editor->text_x, editor->text_y, editor->nl_height);
     adjust_camera_to_cursor(editor);
@@ -498,7 +495,7 @@ static void text_left_click(Editor* editor, float mouse_x, float mouse_y) {
     y_start -= editor->nl_height;
     y_end   -= editor->nl_height;
     for (uint64_t i = 0; i < editor->buffer.length; i++) {
-        if (editor->buffer.content[i] == '\n') {
+        if (editor->buffer.content[i] == L'\n') {
             if (mouse_y <= y_start && mouse_y >= y_end)
                 index_y = i + 1;
             y_start -= editor->nl_height;
@@ -509,11 +506,11 @@ static void text_left_click(Editor* editor, float mouse_x, float mouse_y) {
     float x_start = editor->text_x;
     float x_end   = x_start;
     editor->cursor.position = index_y;
-    if (editor->buffer.content[index_y] == '\n')
+    if (editor->buffer.content[index_y] == L'\n')
         goto left_click_end;
     if (mouse_x < x_start)
         goto left_click_end;
-    for (int i = index_y; index_y < editor->buffer.length && editor->buffer.content[i] != '\n'; i++) {
+    for (int i = index_y; index_y < editor->buffer.length && editor->buffer.content[i] != L'\n'; i++) {
         Character character = editor->character_map.character[(int32_t)editor->buffer.content[i]];
         x_start = x_end;
         x_end += character.advance;
@@ -530,6 +527,8 @@ static void text_left_click(Editor* editor, float mouse_x, float mouse_y) {
 
 void editor_left_click(Editor* restrict editor, float mouse_x, float mouse_y) {
     mouse_y = editor->height - mouse_y;
+    mouse_y += editor->camera_y;
+    mouse_x += editor->camera_x;
     if (mouse_x >= editor->settings_ico.xpos && mouse_x <= editor->settings_ico.xpos + editor->settings_ico.size && mouse_y <= editor->settings_ico.ypos && mouse_y >= editor->settings_ico.ypos - editor->settings_ico.size)
         editor->settings.display = !editor->settings.display;
     else if (mouse_x >= editor->file_ico.xpos && mouse_x <= editor->file_ico.xpos + editor->file_ico.size && mouse_y <= editor->file_ico.ypos && mouse_y >= editor->file_ico.ypos - editor->settings_ico.size) {

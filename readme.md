@@ -164,16 +164,15 @@ cmake --install . --config Release
 ### Version History
 
 `0.6` -> changelog:
+- fixed editor_left_click
 - change from ANSII to UNICODE
-- added file saving via ctrl s
-- added file opening via file explorer
+- added file opening via file explorer (TODO: better support for non unicode encodings)
 
 `0.5` -> changelog:
-- fixed editor_left_click
+- fixed editor_left_click (but not really, forgot to adjust for camera_x and camera_y)
 - added settings icon and file icon
 - added png to texture abstraction
 - replacing validation of chars before rendering with validation before getting added to buffer (editor_input editor_paste)
-- minor fixes and improvements
 
 `0.4` -> changelog:
 - ctrl+v
@@ -183,6 +182,5 @@ cmake --install . --config Release
 - safety checks in to delete char, WM_CHAR default and render text
 - skipping rendering and calculations for text above or below the camera
 - replacing `cursor_update_position` from editor loop to everywhere the cursor position changes
-- minor fixes and improvements
 
 `0.3` -> First working demo. Obscure in features, doesn't actually edit files and limited to keyboard movement.

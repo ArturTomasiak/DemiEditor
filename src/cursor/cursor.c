@@ -11,7 +11,7 @@ void cursor_update_position(Cursor* restrict cursor, Buffer* restrict buffer, Ch
     float start_x = x;
     for (uint64_t i = 0; i < cursor->position && i < buffer->length; i++) {
         Character character = character_map->character[(int32_t)buffer->content[i]];
-        if (buffer->content[i] == '\n') {
+        if (buffer->content[i] == L'\n') {
             y -= nl_height;
             x = start_x;
         }

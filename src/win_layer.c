@@ -3,41 +3,45 @@
 
 #include <windows.h>
 #include <commdlg.h>
-// This doesn't actually work, first step is to check the file's encoding
+// TODO: detect encoding type and read accordingly
 void open_file(Buffer* restrict buffer) {
-    char fileName[MAX_PATH] = "";
+    wchar_t fileName[MAX_PATH] = L"";
 
-    OPENFILENAMEA ofn;
+    OPENFILENAME ofn;
     ZeroMemory(&ofn, sizeof(ofn));
     ofn.lStructSize = sizeof(ofn);
-    ofn.lpstrFilter = "All Files\0*.*\0";
+    ofn.lpstrFilter = L"All Files\0*.*\0";
     ofn.lpstrFile = fileName;
     ofn.nMaxFile = MAX_PATH;
     ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
-    ofn.lpstrTitle = "Select a file to open";
+    ofn.lpstrTitle = L"Select a file to open";
 
-    if (GetOpenFileNameA(&ofn)) {
-        FILE* file = fopen(fileName, "rb");
+    if (GetOpenFileName(&ofn)) {
+        FILE* file = _wfopen(fileName, L"rt,ccs=unicode");
         if (!file) {
             return;
         }
-
+        
         fseek(file, 0, SEEK_END);
-        uint64_t size = ftell(file);
+        uint64_t len = ftell(file);
         rewind(file);
 
-        char* content = malloc(size + 1);
+        wchar_t* content = malloc((len + 1) * sizeof(wchar_t));
         if (!content) {
             error(err_memory_allocation);
             fclose(file);
             return;
         }
 
-        fread(content, 1, size, file);
-        content[size] = '\0';
+        size_t length = 0;
+        while (fgetws(content + length, len * sizeof(wchar_t), file))
+            length = wcslen(content);
+
         fclose(file);
 
-        buffer_replace_content(buffer, content, size + 1);
+        printf("%llu %llu \n", len, length);
+
+        buffer_replace_content(buffer, content, length);
         free(content);
     }
 }   

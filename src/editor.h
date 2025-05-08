@@ -34,6 +34,13 @@ typedef struct {
 
 typedef struct {
     _Bool display;
+    float xpos;
+    float ypos;
+    Size size;
+
+    Shader shader;
+    VertexArrayObject vao;
+    VertexBufferObject vbo;
 } Settings;
 
 typedef struct {
@@ -76,7 +83,6 @@ typedef struct {
     FT_Library ft_lib;
     FT_Face ft_face;
 
-    
     IconData settings_ico;
     IconData file_ico;
     IconObjects ico_objects;
