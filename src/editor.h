@@ -44,7 +44,6 @@ typedef struct {
 
     float editor_font_size;
 
-    float settings_font_size;
     int32_t xpos;
     int32_t ypos;
 } Settings;
@@ -83,7 +82,7 @@ typedef struct {
     
     CharacterMap character_map;
     Shader shader;
-    
+
     uint32_t text_texture;
     VertexArrayObject vao;
     VertexBufferObject vbo;

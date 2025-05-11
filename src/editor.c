@@ -15,14 +15,14 @@ extern inline void ico_objects_bind(Editor* restrict editor) {
     vbo_bind(&editor->ico_objects.vbo);
 }
 
-extern inline void render_text_call(Shader* restrict shader, float* transforms, int32_t* letter_map, uint32_t length) {
+void render_text_call(Shader* restrict shader, float* transforms, int32_t* letter_map, uint32_t length) {
     shader_set_uniform3f(shader, "text_color", 1.0f, 1.0f, 1.0f);
     shader_set_uniformmat4f(shader, "transforms", transforms, length);
     shader_set_uniform1iv(shader, "letter_map", letter_map, length);
     glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, length);
 }
 
-extern inline void render_text(Editor* restrict editor, Buffer* restrict buffer, float text_x, float text_y) {
+void render_text(Editor* restrict editor, Buffer* restrict buffer, float text_x, float text_y) {
     float translate[16] = {0}, scale_matrix[16] = {0};
     float x = text_x;
     float y = text_y;
@@ -141,6 +141,16 @@ Editor editor_create(float width, float height, int32_t dpi) {
     editor.line_spacing_setting = 1.5f;
     editor.settings.editor_font_size = 20;
 
+    if (FT_Init_FreeType(&editor.ft_lib)) {
+        fatal_error(err_freetype_initialization);
+        return editor;
+    }
+
+    if (FT_New_Face(editor.ft_lib, "..\\resources\\fonts\\arial.ttf", 0, &editor.ft_face)) {
+        fatal_error(err_freetype_initialization);
+        return editor;
+    }
+
     glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &editor.processed_chars); // placeholder solution
     
     glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &editor.arr_limit);
@@ -160,29 +170,8 @@ Editor editor_create(float width, float height, int32_t dpi) {
     editor.shader = shader_create("..\\resources\\shaders\\text_vertex.glsl", "..\\resources\\shaders\\text_fragment.glsl", editor.arr_limit);
 
     shader_bind(&editor.shader);
-    editor_window_size(&editor, width, height);
     shader_set_uniform1i(&editor.shader, "text", 0);
-
-    if (FT_Init_FreeType(&editor.ft_lib)) {
-        fatal_error(err_freetype_initialization);
-        return editor;
-    }
-
-    if (FT_New_Face(editor.ft_lib, "..\\resources\\fonts\\arial.ttf", 0, &editor.ft_face)) {
-        fatal_error(err_freetype_initialization);
-        return editor;
-    }
-
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-    glGenTextures(1, &editor.text_texture);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, editor.text_texture);
-
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    editor_window_size(&editor, width, height);
 
     build_font(&editor, editor.settings.editor_font_size);
 
@@ -287,14 +276,42 @@ static inline void post_build_font(Editor* restrict editor) {
     editor->nl_height = editor->character_map.character[L'\n'].size.y * editor->line_spacing;
     editor->text_y = editor->height - 10.0f * editor->aspect_ratio - editor->character_map.character[1].bearing.y;
     editor->cursor.character = editor->character_map.character[L'|'];
+    cursor_update_position(&editor->cursor, &editor->buffer, &editor->character_map, editor->text_x, editor->text_y, editor->nl_height);
 }
 
 static void build_font(Editor* restrict editor, uint16_t font_size) {
     editor->font_pixels_setting = font_size;
     update_font_size(editor);
+
+    if (editor->text_texture) {
+        glDeleteTextures(1, &editor->text_texture);
+        editor->text_texture = 0;
+    }
+    glGenTextures(1, &editor->text_texture);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, editor->text_texture);
+
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
     FT_Set_Pixel_Sizes(editor->ft_face, editor->font_pixels, editor->font_pixels);
-    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_R8, editor->font_pixels, editor->font_pixels, editor->processed_chars, 0, GL_RED, GL_UNSIGNED_BYTE, 0);
+
+    uint64_t totalBytes = editor->font_pixels * editor->font_pixels * editor->processed_chars;
+    uint8_t *empty = calloc(totalBytes, sizeof(uint8_t));
+    if (!empty) {
+        fatal_error(err_memory_allocation);
+        return;
+    }
+
+    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_R8, editor->font_pixels, editor->font_pixels, editor->processed_chars, 0, GL_RED, GL_UNSIGNED_BYTE, empty);
+    free(empty);
+
     for (int32_t c = 0; c < editor->processed_chars; c++) {
+        Character* ch = &editor->character_map.character[c];
         if (FT_Load_Char(editor->ft_face, c, FT_LOAD_RENDER)) {
             #ifdef demidebug
             warning(__LINE__, __FILE__, "failed to load glyph");
@@ -307,7 +324,7 @@ static void build_font(Editor* restrict editor, uint16_t font_size) {
             || editor->ft_face->glyph->bitmap.rows == 0 
             || editor->ft_face->glyph->bitmap.width > editor->font_pixels 
             || editor->ft_face->glyph->bitmap.rows > editor->font_pixels) {
-            editor->character_map.character[c].processed = 0;
+            ch->processed = 0;
             continue;
         }
         get_processed:
@@ -320,15 +337,18 @@ static void build_font(Editor* restrict editor, uint16_t font_size) {
             GL_UNSIGNED_BYTE,
             editor->ft_face->glyph->bitmap.buffer
         );
-        editor->character_map.character[c].ch = (wchar_t)c;
-        editor->character_map.character[c].size.x = editor->ft_face->glyph->bitmap.width;
-        editor->character_map.character[c].size.y = editor->ft_face->glyph->bitmap.rows;
-        editor->character_map.character[c].bearing.x = editor->ft_face->glyph->bitmap_left;
-        editor->character_map.character[c].bearing.y = editor->ft_face->glyph->bitmap_top;
-        editor->character_map.character[c].advance = editor->ft_face->glyph->advance.x >> 6;
-        editor->character_map.character[c].processed = 1;
+        ch->ch = (wchar_t)c;
+        ch->size.x = editor->ft_face->glyph->bitmap.width;
+        ch->size.y = editor->ft_face->glyph->bitmap.rows;
+        ch->bearing.x = editor->ft_face->glyph->bitmap_left;
+        ch->bearing.y = editor->ft_face->glyph->bitmap_top;
+        ch->advance = editor->ft_face->glyph->advance.x >> 6;
+        ch->processed = 1;
     }
     post_build_font(editor);
+
+    text_bind(editor);
+    shader_set_uniform1i(&editor->shader, "text", 0);
 }
 
 static void create_objects(Editor* restrict editor) {
@@ -544,13 +564,8 @@ extern inline void editor_left_click(Editor* restrict editor, float mouse_x, flo
     else if (mouse_x >= editor->settings_ico.xpos + editor->camera_x 
         && mouse_x <= editor->settings_ico.xpos + editor->settings_ico.size + editor->camera_x 
         && mouse_y <= editor->settings_ico.ypos + editor->camera_y
-        && mouse_y >= editor->settings_ico.ypos - editor->settings_ico.size + editor->camera_y) {
+        && mouse_y >= editor->settings_ico.ypos - editor->settings_ico.size + editor->camera_y)
         editor->settings.display = !editor->settings.display;
-        if (editor->settings.display)
-            build_font(editor, editor->settings.settings_font_size);
-        else
-            build_font(editor, editor->settings.editor_font_size);
-    }
     else if (mouse_x >= editor->file_ico.xpos + editor->camera_x 
         && mouse_x <= editor->file_ico.xpos + editor->file_ico.size + editor->camera_x 
         && mouse_y <= editor->file_ico.ypos + editor->camera_y 

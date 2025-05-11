@@ -6,8 +6,10 @@
 #define _UNICODE
 #endif
 
+// will add more macros for compatibility with time
 #if defined(_MSC_VER) && !defined(__clang__)
   #define restrict __restrict
+  #define extern
 #endif
 
 #ifdef NDEBUG

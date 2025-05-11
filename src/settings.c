@@ -84,8 +84,7 @@ void settings_create(Editor* restrict editor) {
     editor->settings.scroll_speed_setting = buffer_create(scroll_speed, wcslen(scroll_speed), wcslen(scroll_speed) + 1);
     editor->settings.scroll_speed_setting = buffer_create(scroll_speed_default, wcslen(scroll_speed_default), 4);
 
-    editor->settings.settings_font_size = 40;
-    editor->settings.xpos = 40;
+    editor->settings.xpos = 80;
     editor->settings.ypos = editor->height - 40;
 }
 
@@ -110,7 +109,7 @@ void settings_render(Editor* restrict editor) {
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
     text_bind(editor);
-    render_text(editor, &editor->settings.font_pixels_setting, 20, 20);
+    render_text(editor, &editor->settings.font_pixels_setting, editor->settings.xpos, editor->settings.ypos);
 }
 
 void settings_left_click(Editor* restrict editor, float mouse_x, float mouse_y) {

@@ -183,6 +183,7 @@ cmake --install . --config Release
 - change from ANSII to UNICODE
 - added file saving (ctrl s)
 - added file opening
+- added settings
 
 `0.5` -> changelog:
 - fixed editor_left_click (but not really, forgot to adjust for camera_x and camera_y)

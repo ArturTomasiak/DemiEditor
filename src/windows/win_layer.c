@@ -61,11 +61,11 @@ DemiFile platform_open_file(Buffer* restrict buffer) {
             return demifile;
         
         fseek(file, 0, SEEK_END);
-        uint64_t size = ftell(file); // may exceed actual length due to BOM
+        uint64_t size = ftell(file);
         rewind(file);
 
         if (demifile.encoding == UTF16LE || demifile.encoding == UTF16BE)
-            size = size >> 1; // size will be precicely double the encoding
+            size = size >> 1;
 
         wchar_t* content = malloc((size) * sizeof(wchar_t));
         if (!content) {
