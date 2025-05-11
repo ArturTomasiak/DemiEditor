@@ -13,10 +13,10 @@ void vbo_delete(VertexBufferObject* vbo) {
     vbo->renderer_id = 0;
 }
 
-void vbo_bind(const VertexBufferObject* vbo) {
+extern inline void vbo_bind(const VertexBufferObject* vbo) {
     glBindBuffer(GL_ARRAY_BUFFER, vbo->renderer_id);
 }
 
-void vbo_unbind() {
+extern inline void vbo_unbind() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }

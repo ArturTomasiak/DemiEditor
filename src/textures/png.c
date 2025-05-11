@@ -6,7 +6,7 @@ PngTexture texture_create(const char* restrict file_path) {
 
     FILE* file_pointer = fopen(file_path, "rb");
     if (!file_pointer) {
-        error(err_file);
+        fatal_error(err_file);
         return texture;
     }
 
@@ -16,28 +16,28 @@ PngTexture texture_create(const char* restrict file_path) {
         #ifdef demidebug
         fatal(__LINE__, __FILE__, "file is not a PNG");
         #endif
-        error(err_png);
+        fatal_error(err_png);
         fclose(file_pointer);
         return texture;
     }
 
     png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png_ptr) {
-        error(err_texture);
+        fatal_error(err_texture);
         fclose(file_pointer);
         return texture;
     }
 
     png_infop info_ptr = png_create_info_struct(png_ptr);
     if (!info_ptr) {
-        error(err_texture);
+        fatal_error(err_texture);
         png_destroy_read_struct(&png_ptr, NULL, NULL);
         fclose(file_pointer);
         return texture;
     }
 
     if (setjmp(png_jmpbuf(png_ptr))) {
-        error(err_texture);
+        fatal_error(err_texture);
         png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
         fclose(file_pointer);
         return texture;
@@ -69,7 +69,7 @@ PngTexture texture_create(const char* restrict file_path) {
     int stride = texture.width * bytes_per_pixel;
     png_bytep buffer = (uint8_t*)malloc(texture.height * stride);
     if (!buffer) {
-        error(err_memory_allocation);
+        fatal_error(err_memory_allocation);
         png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
         fclose(file_pointer);
         return texture;
@@ -77,7 +77,7 @@ PngTexture texture_create(const char* restrict file_path) {
     png_bytep* row_pointers = (png_bytep*)malloc(sizeof(png_bytep) * texture.height);
     if (!row_pointers) {
         free(buffer);
-        error(err_memory_allocation);
+        fatal_error(err_memory_allocation);
         png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
         fclose(file_pointer);
         return texture;
@@ -117,11 +117,11 @@ void texture_delete(PngTexture* restrict texture) {
     texture->renderer_id = 0;
 }
 
-void texture_bind(uint32_t slot, const PngTexture* restrict texture) {
+extern inline void texture_bind(uint32_t slot, const PngTexture* restrict texture) {
     glActiveTexture(GL_TEXTURE0 + slot);
     glBindTexture(GL_TEXTURE_2D, texture->renderer_id);
 }
 
-void texture_unbind() { 
+extern inline void texture_unbind() { 
     glBindTexture(GL_TEXTURE_2D, 0); 
 }

@@ -11,11 +11,11 @@ void vao_delete(VertexArrayObject* vao) {
     vao->renderer_id = 0;
 }
 
-void vao_bind(const VertexArrayObject* vao) {
+extern inline void vao_bind(const VertexArrayObject* vao) {
     glBindVertexArray(vao->renderer_id);
 }
 
-void vao_unbind() {
+extern inline void vao_unbind() {
     glBindVertexArray(0);
 }
 
@@ -39,7 +39,7 @@ void vao_add_element(vertex_buffer_layout* layout, uint32_t count, uint32_t type
     layout->stride += count * type_size;
     layout->elements = realloc(layout->elements, sizeof(layout_element) * layout->element_count);
     if (!layout->elements)
-        error(err_memory_allocation);
+        fatal_error(err_memory_allocation);
     layout->elements[layout->element_count - 1].count = count;
     layout->elements[layout->element_count - 1].type = type;
     layout->elements[layout->element_count - 1].type_size = type_size;

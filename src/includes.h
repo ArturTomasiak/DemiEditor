@@ -6,6 +6,10 @@
 #define _UNICODE
 #endif
 
+#if defined(_MSC_VER) && !defined(__clang__)
+  #define restrict __restrict
+#endif
+
 #ifdef NDEBUG
 #define assert(ignore) ((void)0)
 #endif
@@ -17,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <wchar.h>
 
 enum err_type {
     err_glew_initialization,
@@ -33,7 +38,8 @@ enum err_type {
 };
 
 // implemented in error
-void error(enum err_type err);
+void error(wchar_t* err, wchar_t* title);
+void fatal_error(enum err_type err);
 
 #ifdef demidebug
 void fatal(uint32_t line, char* file, char* message);

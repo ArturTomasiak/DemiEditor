@@ -2,8 +2,6 @@
 
 A work in progress lightweight text editor written in C using opengl, freetype and libpng that runs out of the box.
 
-> ⚠️ Currently supports Windows 10+ and hardware compatible with OpenGL 4.6
-
 ![demi screenshot](screenshot.png)
 
 *p.s. ignore testbed; it's commits are not meant to work*
@@ -11,6 +9,7 @@ A work in progress lightweight text editor written in C using opengl, freetype a
 ### Table of Contents
 
 - [Project Structure](#project-structure)
+- [Project Plans](#project-plans)
 - [Credits](#credits)
 - [Linux](#linux)
 - [Build Instructions](#compilation)
@@ -38,10 +37,26 @@ resources/
 ├── icons/
 ├── shaders/
 ```
+### Project Plans
+
+I got into this project with close to no experience graphics programming and creating bigger projects in C, thus a lot of this project is placeholder or unintentionally wrong.
+
+Short Term Goals:
+- line counting
+- ctrl z, ctrl y
+- ctrl + arrow to jump every second line
+- process and store 15 000 characters regardless of hardware
+- restructure editor to allow for multiple files
+- ui redesign
+- custom fonts
 
 ### Credits
 
-- magic_hat, settings_5_fill and document_2_line icons by [mingcute](https://www.mingcute.com/)
+- icons by [mingcute](https://www.mingcute.com/), icons used:
+    - magic_hat
+    - close_fill
+    - settings_5_fill
+    - document_2_line
 - glew
 - zlib
 - libpng
@@ -166,13 +181,14 @@ cmake --install . --config Release
 `0.6` -> changelog:
 - fixed editor_left_click
 - change from ANSII to UNICODE
-- added file opening via file explorer (TODO: better support for non unicode encodings)
+- added file saving (ctrl s)
+- added file opening
 
 `0.5` -> changelog:
 - fixed editor_left_click (but not really, forgot to adjust for camera_x and camera_y)
 - added settings icon and file icon
 - added png to texture abstraction
-- replacing validation of chars before rendering with validation before getting added to buffer (editor_input editor_paste)
+- replacing validation of chars with validation before getting added to buffer (editor_input editor_paste)
 
 `0.4` -> changelog:
 - ctrl+v
@@ -180,7 +196,9 @@ cmake --install . --config Release
 - moving via mouse
 - improved key up/down
 - safety checks in to delete char, WM_CHAR default and render text
-- skipping rendering and calculations for text above or below the camera
-- replacing `cursor_update_position` from editor loop to everywhere the cursor position changes
+- skipping rendering and calculations for text above/below the camera
+- replacing `cursor_update_position` from editor loop to where the cursor position changes
 
 `0.3` -> First working demo. Obscure in features, doesn't actually edit files and limited to keyboard movement.
+
+*p.s. structural and minor changes are left undocumented*

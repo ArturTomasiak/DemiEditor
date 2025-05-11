@@ -34,19 +34,27 @@ typedef struct {
 
 typedef struct {
     _Bool display;
-    float xpos;
-    float ypos;
-    Size size;
+    IconData close_ico;
+    Buffer font_pixels_setting;
+    Buffer font_pixels_input;
+    Buffer line_spacing_setting;
+    Buffer line_spacing_input;
+    Buffer scroll_speed_setting;
+    Buffer scroll_speed_input;
 
-    Shader shader;
-    VertexArrayObject vao;
-    VertexBufferObject vbo;
+    float editor_font_size;
+
+    float settings_font_size;
+    int32_t xpos;
+    int32_t ypos;
 } Settings;
 
 typedef struct {
+    DemiFile file;
+    
     uint16_t font_pixels_setting;
-    float line_spacing_setting;
     uint16_t font_pixels; 
+    float line_spacing_setting;
     float line_spacing;
     float dpi_scale;
     
@@ -76,7 +84,7 @@ typedef struct {
     CharacterMap character_map;
     Shader shader;
     
-    uint32_t texture_array;
+    uint32_t text_texture;
     VertexArrayObject vao;
     VertexBufferObject vbo;
     
@@ -92,18 +100,22 @@ typedef struct {
 // settings.c 
 
 void settings_ico_render(Editor* restrict editor);
+void settings_close_ico_calculate(Editor* restrict editor);
 void settings_ico_calculate(Editor* restrict editor);
 
+void settings_create(Editor* restrict editor);
+void settings_delete(Settings* restrict settings) ;
 void settings_render(Editor* restrict editor);
 void settings_left_click(Editor* restrict editor, float mouse_x, float mouse_y);
 
 // editor.c 
 
-// static void text_bind(Editor* restrict editor);
-// static void ico_objects_bind(Editor* restrict editor);
+void text_bind(Editor* restrict editor);
+void ico_objects_bind(Editor* restrict editor);
 
-// static void render_text_call(Editor* restrict editor, uint32_t length);
-// static void render_text(Editor* restrict editor);
+void render_text_call(Shader* restrict shader, float* transforms, int32_t* letter_map, uint32_t length);
+void render_text(Editor* restrict editor, Buffer* restrict buffer, float text_x, float text_y);
+
 // static void adjust_ortographic(Editor* restrict editor);
 // static void adjust_camera_to_cursor(Editor* restrict editor);
 // static void settings_ico_render(Editor* restrict editor);
@@ -115,8 +127,8 @@ void editor_delete(Editor* restrict editor);
 void editor_dpi(Editor* restrict editor, int32_t dpi);
 _Bool alloc_variables(Editor* restrict editor);
 
-// static void build_font(Editor* restrict editor);
-// static void build_cursor(Editor* restrict editor);
+// static inline void build_cursor(Editor* restrict editor);
+void build_font(Editor* restrict editor, uint16_t font_size);
 // static void create_objects(Editor* restrict editor);
 // static void file_ico_calculate(Editor* restrict editor);
 
@@ -124,7 +136,8 @@ void editor_backspace(Editor* restrict editor);
 void editor_tab(Editor* restrict editor);
 void editor_enter(Editor* restrict editor);
 void editor_input(Editor* restrict editor, wchar_t ch);
-void editor_paste(Editor* restrict editor, const wchar_t* restrict text);
+void editor_paste(Editor* restrict editor, wchar_t* restrict text);
+void editor_save(Editor* restrict editor);
 
 void editor_key_left(Editor* restrict editor);
 void editor_key_right(Editor* restrict editor);

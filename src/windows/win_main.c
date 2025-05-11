@@ -1,10 +1,10 @@
-#include "includes.h"
+#include "../includes.h"
 #ifdef demiwindows
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-#include "editor.h"
+#include "../editor.h"
 
 static void end_gracefully(Editor* restrict editor, HGLRC hglrc, HWND hwnd, HDC hdc);
 static _Bool create_window(WNDCLASSEX* restrict wc, HINSTANCE hinstance, HWND* restrict hwnd);
@@ -48,7 +48,7 @@ int32_t CALLBACK WinMain(
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) {
         wglDeleteContext(temp_context);
-        error(err_glew_initialization);
+        fatal_error(err_glew_initialization);
         ReleaseDC(hwnd, hdc);
         DestroyWindow(hwnd);
         return -1;
@@ -145,7 +145,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param) {
                     editor_enter(editor);
                 break;
                 default:
-                    if (w_param >= 0x20)
+                    if (iswprint(w_param) && !iswcntrl(w_param))
                         editor_input(editor, w_param);
                 break;
             }
@@ -166,6 +166,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param) {
                                 }
                                 CloseClipboard();
                             }
+                break;
+                case 'S':
+                    if (GetKeyState(VK_CONTROL) & 0x8000)
+                        editor_save(editor);
                 break;
                 case VK_LEFT:
                     editor_key_left(editor);
@@ -205,7 +209,7 @@ static _Bool create_window(WNDCLASSEX* restrict wc, HINSTANCE hinstance, HWND* r
     const wchar_t* application_icon = L"..\\resources\\icons\\icon.ico";
     DWORD attributes = GetFileAttributes(application_icon);
     if (attributes == INVALID_FILE_ATTRIBUTES || attributes & FILE_ATTRIBUTE_DIRECTORY) {
-        error(err_icon);
+        fatal_error(err_icon);
         return 0;
     }
     wc->cbSize = sizeof(*wc);
@@ -223,7 +227,7 @@ static _Bool create_window(WNDCLASSEX* restrict wc, HINSTANCE hinstance, HWND* r
         200, 200, width, height, 0, 0, hinstance, 0 
     );
     if (!*hwnd) {
-        error(err_create_window);
+        fatal_error(err_create_window);
         return 0;
     }
     return 1;
@@ -284,7 +288,7 @@ static HGLRC create_context(HDC hdc, HWND hwnd) {
     return hglrc;
 
 fail:
-    error(err_opengl_context);
+    fatal_error(err_opengl_context);
     ReleaseDC(hwnd, hdc);
     DestroyWindow(hwnd);
     ExitProcess(0);

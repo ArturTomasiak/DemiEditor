@@ -1,10 +1,14 @@
-#include "includes.h"
+#include "../includes.h"
 #ifdef demiwindows
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-void error(enum err_type err) {
+void error(wchar_t* err, wchar_t* title) {
+    MessageBox(NULL, err, title, MB_OK);
+}
+
+void fatal_error(enum err_type err) {
     wchar_t* error;
     switch (err) {
         case err_glew_initialization:
