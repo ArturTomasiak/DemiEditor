@@ -35,12 +35,20 @@ typedef struct {
 typedef struct {
     _Bool display;
     IconData close_ico;
-    Buffer font_pixels_setting;
-    Buffer font_pixels_input;
-    Buffer line_spacing_setting;
-    Buffer line_spacing_input;
-    Buffer scroll_speed_setting;
-    Buffer scroll_speed_input;
+
+    Buffer font_setting;
+    Buffer font_input;
+    Buffer line_setting;
+    Buffer line_input;
+    Buffer scroll_setting;
+    Buffer scroll_input;
+
+    float font_setting_width;
+    float line_setting_width;
+    float scroll_setting_width;
+    float input_box_spacing;
+    float input_spacing;
+    float y_spacing;
 
     float editor_font_size;
 
@@ -98,7 +106,6 @@ typedef struct {
 
 // settings.c 
 
-void settings_ico_render(Editor* restrict editor);
 void settings_close_ico_calculate(Editor* restrict editor);
 void settings_ico_calculate(Editor* restrict editor);
 
@@ -109,22 +116,24 @@ void settings_left_click(Editor* restrict editor, float mouse_x, float mouse_y);
 
 // editor.c 
 
+void editor_loop(Editor* restrict editor);
+
 void text_bind(Editor* restrict editor);
 void ico_objects_bind(Editor* restrict editor);
 
 void render_text_call(Shader* restrict shader, float* transforms, int32_t* letter_map, uint32_t length);
 void render_text(Editor* restrict editor, Buffer* restrict buffer, float text_x, float text_y);
 
+void ico_render(Editor* restrict editor, float* model);
+
 // static void adjust_ortographic(Editor* restrict editor);
 // static void adjust_camera_to_cursor(Editor* restrict editor);
-// static void settings_ico_render(Editor* restrict editor);
 
-void editor_loop(Editor* restrict editor);
 void editor_window_size(Editor* restrict editor, float width, float height);
 Editor editor_create(float width, float height, int32_t dpi);
 void editor_delete(Editor* restrict editor);
 void editor_dpi(Editor* restrict editor, int32_t dpi);
-_Bool alloc_variables(Editor* restrict editor);
+_Bool editor_alloc(Editor* restrict editor);
 
 // static inline void build_cursor(Editor* restrict editor);
 void build_font(Editor* restrict editor, uint16_t font_size);

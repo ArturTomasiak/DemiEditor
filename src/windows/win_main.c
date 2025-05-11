@@ -134,20 +134,27 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param) {
             editor_left_click(editor, (float)(short)LOWORD(l_param), (float)(short)HIWORD(l_param)); 
         break;
         case WM_CHAR:
-            switch(w_param) {
-                case 8:
-                    editor_backspace(editor);
-                break;
-                case 9:
-                    editor_tab(editor);
-                break;
-                case 13:
-                    editor_enter(editor);
-                break;
-                default:
-                    if (iswprint(w_param) && !iswcntrl(w_param))
-                        editor_input(editor, w_param);
-                break;
+            if (editor->settings.display) {
+                if (iswprint(w_param) && !iswcntrl(w_param)) {
+                        ; // TODO text input
+                }
+            }
+            else {
+                switch(w_param) {
+                    case 8:
+                        editor_backspace(editor);
+                    break;
+                    case 9:
+                        editor_tab(editor);
+                    break;
+                    case 13:
+                        editor_enter(editor);
+                    break;
+                    default:
+                        if (iswprint(w_param) && !iswcntrl(w_param) && w_param < editor->processed_chars)
+                            editor_input(editor, w_param);
+                    break;
+                }
             }
         break;
         case WM_KEYDOWN:

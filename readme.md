@@ -2,9 +2,9 @@
 
 A work in progress lightweight text editor written in C using opengl, freetype and libpng that runs out of the box.
 
-![demi screenshot](screenshot.png)
+![glew.h opened in DemiEditor](screenshot.png)
 
-*p.s. ignore testbed; it's commits are not meant to work*
+*a screenshot of glew opened in demi 0.6*
 
 ### Table of Contents
 
@@ -46,6 +46,7 @@ Short Term Goals:
 - ctrl z, ctrl y
 - ctrl + arrow to jump every second line
 - process and store 15 000 characters regardless of hardware
+- vertical and horizontal scroll bars
 - restructure editor to allow for multiple files
 - ui redesign
 - custom fonts
@@ -183,7 +184,10 @@ cmake --install . --config Release
 - change from ANSII to UNICODE
 - added file saving (ctrl s)
 - added file opening
-- added settings
+- added settings menu with adjustable:
+    - font size
+    - line spacing
+    - scroll speed
 
 `0.5` -> changelog:
 - fixed editor_left_click (but not really, forgot to adjust for camera_x and camera_y)

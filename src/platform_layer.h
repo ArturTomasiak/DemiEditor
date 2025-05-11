@@ -20,6 +20,6 @@ typedef struct {
 } DemiFile;
 
 void platform_delete_file(DemiFile* file);
-DemiFile platform_open_file(Buffer* restrict buffer);
+DemiFile platform_open_file(Buffer* restrict buffer, int32_t processed_chars);
 void platform_save_file(DemiFile* restrict demifile, Buffer* restrict buffer);
-uint64_t platform_validate_string(wchar_t* restrict string);
+uint64_t platform_validate_string(wchar_t* restrict string, int32_t processed_chars);

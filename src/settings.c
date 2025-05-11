@@ -1,12 +1,5 @@
 #include "editor.h"
 
-void settings_ico_render(Editor* restrict editor) {
-    shader_set_uniformmat4f(&editor->ico_objects.shader, "projection", editor->projection, 1);
-    shader_set_uniformmat4f(&editor->ico_objects.shader, "model", editor->settings_ico.model, 1);
-    shader_set_uniform1i(&editor->ico_objects.shader, "icon_texture", 0);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-}
-
 void settings_ico_calculate(Editor* restrict editor) {
     editor->settings_ico.xpos = 5.0f * editor->aspect_ratio;
     editor->settings_ico.ypos = editor->height - 5.0f  * editor->aspect_ratio;
@@ -19,7 +12,7 @@ void settings_ico_calculate(Editor* restrict editor) {
     math_identity_f4x4(editor->settings_ico.scale_matrix, 1.0f);
     math_identity_f4x4(editor->settings_ico.translate, 1.0f);
     
-    math_translate_f4x4(editor->settings_ico.translate, xpos, ypos, 0);
+    math_translate_f4x4(editor->settings_ico.translate, xpos, ypos, 0.0f);
     math_scale_f4x4(editor->settings_ico.scale_matrix, editor->settings_ico.size, editor->settings_ico.size, 1.0f);
     math_multiply_f4x4(editor->settings_ico.model, editor->settings_ico.translate, editor->settings_ico.scale_matrix);
 }
@@ -36,9 +29,16 @@ void settings_close_ico_calculate(Editor* restrict editor) {
     math_identity_f4x4(editor->settings.close_ico.scale_matrix, 1.0f);
     math_identity_f4x4(editor->settings.close_ico.translate, 1.0f);
     
-    math_translate_f4x4(editor->settings.close_ico.translate, xpos, ypos, 0);
+    math_translate_f4x4(editor->settings.close_ico.translate, xpos, ypos, 0.0f);
     math_scale_f4x4(editor->settings.close_ico.scale_matrix, editor->settings.close_ico.size, editor->settings.close_ico.size, 1.0f);
     math_multiply_f4x4(editor->settings.close_ico.model, editor->settings.close_ico.translate, editor->settings.close_ico.scale_matrix);
+}
+
+static float text_width(Buffer* restrict buffer, CharacterMap* restrict character_map) {
+    float width = 0;
+    for (uint16_t i = 0; i < buffer->length; i++)
+        width += character_map->character[(int32_t)buffer->content[i]].advance;
+    return width;
 }
 
 void settings_create(Editor* restrict editor) {
@@ -55,7 +55,7 @@ void settings_create(Editor* restrict editor) {
     settings_close_ico_calculate(editor);
 
     editor->settings_ico.size = editor->settings.close_ico.size;
-    editor->ico_objects.shader = shader_create("..\\resources\\shaders\\ico_vertex.glsl", "..\\resources\\shaders\\ico_fragment.glsl", 1);
+    editor->ico_objects.shader = shader_create("..\\resources\\shaders\\ui_vertex.glsl", "..\\resources\\shaders\\ui_fragment.glsl", 1);
     
     shader_bind(&editor->ico_objects.shader);
 
@@ -77,26 +77,34 @@ void settings_create(Editor* restrict editor) {
     wchar_t* font_size_default = L"20";
     wchar_t* line_spacing_default = L"1.5";
     wchar_t* scroll_speed_default = L"30";
-    editor->settings.font_pixels_setting  = buffer_create(font_size, wcslen(font_size), wcslen(font_size) + 1);
-    editor->settings.font_pixels_input    = buffer_create(font_size_default, wcslen(font_size_default), 4);
-    editor->settings.line_spacing_setting = buffer_create(line_spacing, wcslen(line_spacing), wcslen(line_spacing) + 1);
-    editor->settings.line_spacing_input   = buffer_create(line_spacing_default, wcslen(line_spacing_default), 5);
-    editor->settings.scroll_speed_setting = buffer_create(scroll_speed, wcslen(scroll_speed), wcslen(scroll_speed) + 1);
-    editor->settings.scroll_speed_setting = buffer_create(scroll_speed_default, wcslen(scroll_speed_default), 4);
+    editor->settings.font_setting   = buffer_create(font_size, wcslen(font_size), wcslen(font_size) + 1);
+    editor->settings.font_input     = buffer_create(font_size_default, wcslen(font_size_default), 4);
+    editor->settings.line_setting   = buffer_create(line_spacing, wcslen(line_spacing), wcslen(line_spacing) + 1);
+    editor->settings.line_input     = buffer_create(line_spacing_default, wcslen(line_spacing_default), 5);
+    editor->settings.scroll_setting = buffer_create(scroll_speed, wcslen(scroll_speed), wcslen(scroll_speed) + 1);
+    editor->settings.scroll_input   = buffer_create(scroll_speed_default, wcslen(scroll_speed_default), 4);
 
     editor->settings.xpos = 80;
     editor->settings.ypos = editor->height - 40;
+
+    editor->settings.font_setting_width   = text_width(&editor->settings.font_setting, &editor->character_map);
+    editor->settings.line_setting_width   = text_width(&editor->settings.line_setting, &editor->character_map);
+    editor->settings.scroll_setting_width = text_width(&editor->settings.scroll_setting, &editor->character_map);
+
+    editor->settings.input_box_spacing = editor->character_map.character[(int32_t)L' '].advance << 2;
+    editor->settings.input_spacing     = editor->character_map.character[(int32_t)L' '].advance << 3;
+    editor->settings.y_spacing         = editor->nl_height * 2;
 }
 
 void settings_delete(Settings* restrict settings) {
     texture_delete(&settings->close_ico.texture);
 
-    buffer_delete(&settings->font_pixels_input);
-    buffer_delete(&settings->font_pixels_setting);
-    buffer_delete(&settings->line_spacing_input);
-    buffer_delete(&settings->line_spacing_setting);
-    buffer_delete(&settings->scroll_speed_input);
-    buffer_delete(&settings->scroll_speed_setting);
+    buffer_delete(&settings->font_input);
+    buffer_delete(&settings->font_setting);
+    buffer_delete(&settings->line_input);
+    buffer_delete(&settings->line_setting);
+    buffer_delete(&settings->scroll_input);
+    buffer_delete(&settings->scroll_setting);
 }
 
 void settings_render(Editor* restrict editor) {
@@ -105,11 +113,21 @@ void settings_render(Editor* restrict editor) {
 
     shader_set_uniformmat4f(&editor->ico_objects.shader, "projection", editor->projection, 1);
     shader_set_uniformmat4f(&editor->ico_objects.shader, "model", editor->settings.close_ico.model, 1);
-    shader_set_uniform1i(&editor->ico_objects.shader, "icon_texture", 0);
+    shader_set_uniform1i(&editor->ico_objects.shader, "texture_passed", 1);
+    shader_set_uniform1i(&editor->ico_objects.shader, "texture_input", 0);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
+    float ypos = editor->settings.ypos;
+
     text_bind(editor);
-    render_text(editor, &editor->settings.font_pixels_setting, editor->settings.xpos, editor->settings.ypos);
+    render_text(editor, &editor->settings.font_setting, editor->settings.xpos, ypos);
+    render_text(editor, &editor->settings.font_input, editor->settings.xpos + editor->settings.font_setting_width + editor->settings.input_spacing, ypos);
+    ypos -= editor->settings.y_spacing;
+    render_text(editor, &editor->settings.line_setting, editor->settings.xpos, ypos);
+    render_text(editor, &editor->settings.line_input, editor->settings.xpos + editor->settings.line_setting_width + editor->settings.input_spacing, ypos);
+    ypos -= editor->settings.y_spacing;
+    render_text(editor, &editor->settings.scroll_setting, editor->settings.xpos, ypos);
+    render_text(editor, &editor->settings.scroll_input, editor->settings.xpos + editor->settings.scroll_setting_width + editor->settings.input_spacing, ypos);
 }
 
 void settings_left_click(Editor* restrict editor, float mouse_x, float mouse_y) {

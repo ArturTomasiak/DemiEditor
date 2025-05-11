@@ -28,7 +28,7 @@ static inline Encoding get_encoding(const wchar_t* file_path) {
         return UTF8;
 } 
 
-DemiFile platform_open_file(Buffer* restrict buffer) {
+DemiFile platform_open_file(Buffer* restrict buffer, int32_t processed_chars) {
     DemiFile demifile;
     demifile.loaded         = 0;
     demifile.saved_progress = 1;
@@ -83,7 +83,7 @@ DemiFile platform_open_file(Buffer* restrict buffer) {
         printf("file size: %llu conent length: %llu\n", size, length);
         #endif
 
-        length = platform_validate_string(content);
+        length = platform_validate_string(content, processed_chars);
         buffer_replace_content(buffer, content, length);
         free(content);
         fclose(file);
@@ -125,10 +125,10 @@ extern inline void platform_save_file(DemiFile* restrict file, Buffer* restrict 
     fclose(raw);
 }
 
-uint64_t platform_validate_string(wchar_t* restrict string) {
+uint64_t platform_validate_string(wchar_t* restrict string, int32_t processed_chars) {
     uint64_t i = 0, j = 0;
     while (string[i] != L'\0') {
-        if ( string[i] == L'\n' || (iswprint(string[i]) && !iswcntrl(string[i])) )
+        if ( string[i] == L'\n' || (iswprint(string[i]) && !iswcntrl(string[i]) && (int32_t)string[i] < processed_chars) )
             string[j++] = string[i];
         i++;
     }

@@ -1,5 +1,23 @@
 #include "editor.h"
 
+extern inline void editor_loop(Editor* restrict editor) {
+    if (editor->settings.display) {
+        settings_render(editor);
+        return;
+    }
+    ico_objects_bind(editor);
+    texture_bind(0, &editor->settings_ico.texture);
+    ico_render(editor, editor->settings_ico.model);
+
+    texture_bind(0, &editor->file_ico.texture);
+    ico_render(editor, editor->file_ico.model);
+
+    text_bind(editor);
+    cursor_update_blink(&editor->cursor);
+    cursor_render(&editor->cursor, &editor->shader);
+    render_text(editor, &editor->buffer, editor->text_x, editor->text_y);
+}
+
 static void create_objects(Editor* restrict editor);
 static void file_ico_calculate(Editor* restrict editor);
 
@@ -15,7 +33,7 @@ extern inline void ico_objects_bind(Editor* restrict editor) {
     vbo_bind(&editor->ico_objects.vbo);
 }
 
-void render_text_call(Shader* restrict shader, float* transforms, int32_t* letter_map, uint32_t length) {
+extern inline void render_text_call(Shader* restrict shader, float* transforms, int32_t* letter_map, uint32_t length) {
     shader_set_uniform3f(shader, "text_color", 1.0f, 1.0f, 1.0f);
     shader_set_uniformmat4f(shader, "transforms", transforms, length);
     shader_set_uniform1iv(shader, "letter_map", letter_map, length);
@@ -49,7 +67,7 @@ void render_text(Editor* restrict editor, Buffer* restrict buffer, float text_x,
             math_identity_f4x4(scale_matrix, 1.0f);
 
             editor->letter_map[working_index] = character.ch;
-            math_translate_f4x4(translate, xpos, ypos, 0);
+            math_translate_f4x4(translate, xpos, ypos, 0.9f);
             math_scale_f4x4(scale_matrix, editor->font_pixels, editor->font_pixels, 0);
             math_multiply_f4x4(editor->transforms + (working_index * 16), translate, scale_matrix);
             x += character.advance;
@@ -64,7 +82,15 @@ void render_text(Editor* restrict editor, Buffer* restrict buffer, float text_x,
         render_text_call(&editor->shader, editor->transforms, editor->letter_map, working_index);
 }
 
-static void adjust_ortographic(Editor* restrict editor, float camera_x, float camera_y) {
+void ico_render(Editor* restrict editor, float* model) {
+    shader_set_uniformmat4f(&editor->ico_objects.shader, "projection", editor->projection, 1);
+    shader_set_uniformmat4f(&editor->ico_objects.shader, "model", model, 1);
+    shader_set_uniform1i(&editor->ico_objects.shader, "texture_passed", 1);
+    shader_set_uniform1i(&editor->ico_objects.shader, "texture_input", 0);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+}
+
+static inline void adjust_ortographic(Editor* restrict editor, float camera_x, float camera_y) {
     math_orthographic_f4x4(editor->projection, camera_x, editor->width + camera_x, camera_y, editor->height + camera_y, -1.0f, 1.0f);
     shader_set_uniformmat4f(&editor->shader, "projection", editor->projection, 1);
 }
@@ -86,31 +112,6 @@ static void adjust_camera_to_cursor(Editor* restrict editor) {
     settings_close_ico_calculate(editor);
     settings_ico_calculate(editor);
     file_ico_calculate(editor);
-}
-
-static void file_ico_render(Editor* restrict editor) {
-    shader_set_uniformmat4f(&editor->ico_objects.shader, "projection", editor->projection, 1);
-    shader_set_uniformmat4f(&editor->ico_objects.shader, "model", editor->file_ico.model, 1);
-    shader_set_uniform1i(&editor->ico_objects.shader, "icon_texture", 0);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-}
-
-extern inline void editor_loop(Editor* restrict editor) {
-    if (editor->settings.display) {
-        settings_render(editor);
-        return;
-    }
-    ico_objects_bind(editor);
-    texture_bind(0, &editor->settings_ico.texture);
-    settings_ico_render(editor);
-
-    texture_bind(0, &editor->file_ico.texture);
-    file_ico_render(editor);
-
-    text_bind(editor);
-    cursor_update_blink(&editor->cursor);
-    cursor_render(&editor->cursor, &editor->shader);
-    render_text(editor, &editor->buffer, editor->text_x, editor->text_y);
 }
 
 void editor_window_size(Editor* restrict editor, float width, float height) {
@@ -158,14 +159,14 @@ Editor editor_create(float width, float height, int32_t dpi) {
     if (editor.arr_limit < 10) // arbitraty impossible scenario
         editor.arr_limit = 10;
 
-    if (!alloc_variables(&editor))
+    if (!editor_alloc(&editor))
         return editor;
 
     editor_dpi(&editor, dpi);
 
     glEnable(GL_BLEND);
-    glEnable(GL_MULTISAMPLE);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_MULTISAMPLE);
 
     editor.shader = shader_create("..\\resources\\shaders\\text_vertex.glsl", "..\\resources\\shaders\\text_fragment.glsl", editor.arr_limit);
 
@@ -245,7 +246,7 @@ void editor_dpi(Editor* restrict editor, int32_t dpi) {
     update_line_spacing(editor);
 }
 
-_Bool alloc_variables(Editor* restrict editor) {
+_Bool editor_alloc(Editor* restrict editor) {
     editor->projection = calloc(16, sizeof(float));
     if (!editor->projection) goto projection_failed;
 
@@ -300,8 +301,7 @@ static void build_font(Editor* restrict editor, uint16_t font_size) {
 
     FT_Set_Pixel_Sizes(editor->ft_face, editor->font_pixels, editor->font_pixels);
 
-    uint64_t totalBytes = editor->font_pixels * editor->font_pixels * editor->processed_chars;
-    uint8_t *empty = calloc(totalBytes, sizeof(uint8_t));
+    uint8_t *empty = calloc(editor->font_pixels * editor->font_pixels * editor->processed_chars, sizeof(uint8_t));
     if (!empty) {
         fatal_error(err_memory_allocation);
         return;
@@ -353,10 +353,10 @@ static void build_font(Editor* restrict editor, uint16_t font_size) {
 
 static void create_objects(Editor* restrict editor) {
     const float text_vertex_data[8] = {
-        0.0f,1.0f,
-        0.0f,0.0f,
-        1.0f,1.0f,
-        1.0f,0.0f,
+        0.0f, 1.0f,
+        0.0f, 0.0f,
+        1.0f, 1.0f,
+        1.0f, 0.0f,
     };
 
     editor->vao = vao_create();
@@ -380,7 +380,7 @@ static void file_ico_calculate(Editor* restrict editor) {
     math_identity_f4x4(editor->file_ico.scale_matrix, 1.0f);
     math_identity_f4x4(editor->file_ico.translate, 1.0f);
     
-    math_translate_f4x4(editor->file_ico.translate, xpos, ypos, 0);
+    math_translate_f4x4(editor->file_ico.translate, xpos, ypos, 0.0f);
     math_scale_f4x4(editor->file_ico.scale_matrix, editor->file_ico.size, editor->file_ico.size, 1.0f);
     math_multiply_f4x4(editor->file_ico.model, editor->file_ico.translate, editor->file_ico.scale_matrix);
 }
@@ -422,7 +422,7 @@ extern inline void editor_input(Editor* restrict editor, wchar_t ch) {
 }
 
 extern inline void editor_paste(Editor* restrict editor, wchar_t* restrict text) {
-    uint64_t len = platform_validate_string(text);
+    uint64_t len = platform_validate_string(text, editor->processed_chars);
     buffer_insert_string(&editor->buffer, text, editor->cursor.position, len);
     editor->cursor.position += len;
     cursor_update_position(&editor->cursor, &editor->buffer, &editor->character_map, editor->text_x, editor->text_y, editor->nl_height);
@@ -570,7 +570,7 @@ extern inline void editor_left_click(Editor* restrict editor, float mouse_x, flo
         && mouse_x <= editor->file_ico.xpos + editor->file_ico.size + editor->camera_x 
         && mouse_y <= editor->file_ico.ypos + editor->camera_y 
         && mouse_y >= editor->file_ico.ypos - editor->settings_ico.size + editor->camera_y) {
-        DemiFile file = platform_open_file(&editor->buffer);
+        DemiFile file = platform_open_file(&editor->buffer, editor->processed_chars);
         if (file.loaded) {
             editor->file.loaded = 1;
             editor->file.path = file.path;
