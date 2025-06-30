@@ -1,3 +1,6 @@
+> [!NOTE]
+> I rewrote the project under a new repo https://github.com/ArturTomasiak/Demi
+
 ## DemiEditor
 
 A work in progress lightweight text editor written in C using opengl, freetype and libpng that runs out of the box.
